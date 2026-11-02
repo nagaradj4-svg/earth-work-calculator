@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Road Earthwork Volume Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --paper:#EEF1EA;
+  --paper-2:#E4E9E1;
+  --ink:#1C2321;
+  --ink-soft:#4A534E;
+  --blue:#274472;
+  --blue-2:#3E6FA6;
+  --blue-line:rgba(39,68,114,.14);
+  --cut:#B33F1E;
+  --cut-bg:rgba(179,63,30,.12);
+  --fill:#1F7A5C;
+  --fill-bg:rgba(31,122,92,.12);
+  --amber:#C98A2C;
+  --white:#FBFAF6;
+  --line:#CBD2C6;
+  --radius:3px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  background-image:
+    linear-gradient(var(--blue-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--blue-line) 1px, transparent 1px);
+  background-size:24px 24px;
+  color:var(--ink);
+  font-family:'IBM Plex Sans',sans-serif;
+  font-size:14px;
+  line-height:1.4;
+  min-height:100vh;
+  padding-bottom:60px;
+}
+h1,h2,h3{font-family:'Space Grotesk',sans-serif;margin:0}
+.mono{font-family:'IBM Plex Mono',monospace}
+button, input, select{font-family:inherit;font-size:14px}
+a{color:var(--blue-2)}
+
+/* ---- Title block ---- */
+.titleblock{
+  max-width:1180px;margin:16px auto 10px;background:var(--white);
+  border:2px solid var(--ink);box-shadow:4px 4px 0 var(--blue-line);
+}
+.tb-top{display:flex;flex-wrap:wrap;border-bottom:1.5px solid var(--ink)}
+.tb-brand{
+  flex:1 1 260px;padding:14px 18px;border-right:1.5px solid var(--ink);
+  background:var(--blue);color:var(--white);
+}
+.tb-brand .eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;opacity:.75;font-family:'IBM Plex Mono',monospace}
+.tb-brand h1{font-size:20px;font-weight:700;margin-top:3px;letter-spacing:-.01em}
+.tb-brand .sub{font-size:11.5px;opacity:.85;margin-top:2px}
+.tb-fields{flex:2 1 480px;display:grid;grid-template-columns:repeat(3,1fr)}
+.tb-cell{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:8px 12px;min-width:0}
+.tb-cell:nth-child(3n){border-right:none}
+.tb-cell label{display:block;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace}
+.tb-cell input{border:none;background:transparent;width:100%;padding:2px 0;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink);font-weight:500}
+.tb-cell input:focus{outline:none;border-bottom:1.5px solid var(--blue-2)}
+.tb-stats{display:grid;grid-template-columns:repeat(4,1fr)}
+.tb-stat{padding:10px 14px;border-right:1px solid var(--line)}
+.tb-stat:last-child{border-right:none}
+.tb-stat .k{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace}
+.tb-stat .v{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:17px;margin-top:2px}
+.tb-stat.cut .v{color:var(--cut)}
+.tb-stat.fill .v{color:var(--fill)}
+.tb-stat.net .v{color:var(--blue)}
+
+/* ---- Tabs ---- */
+.tabs{max-width:1180px;margin:0 auto;display:flex;gap:2px;padding:0 0;flex-wrap:wrap}
+.tab{
+  cursor:pointer;padding:9px 16px;background:var(--paper-2);border:1.5px solid var(--ink);border-bottom:none;
+  font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.04em;color:var(--ink-soft);
+  display:flex;align-items:center;gap:8px;user-select:none;
+}
+.tab .num{color:var(--blue-2);font-weight:600}
+.tab.active{background:var(--white);color:var(--ink);font-weight:600}
+.sheet{
+  max-width:1180px;margin:0 auto 20px;background:var(--white);border:1.5px solid var(--ink);
+  border-top:3px solid var(--blue);padding:20px;display:none;
+}
+.sheet.active{display:block}
+.sheet-head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.sheet-head h2{font-size:16px}
+.sheet-head .hint{font-size:11.5px;color:var(--ink-soft);max-width:520px}
+
+/* ---- Controls ---- */
+.controls-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace}
+.field input, .field select{padding:7px 9px;border:1.3px solid var(--line);border-radius:var(--radius);background:var(--white);min-width:90px}
+.field input:focus,.field select:focus{outline:none;border-color:var(--blue-2)}
+.field label.chk{flex-direction:row;align-items:center;gap:7px;padding:7px 9px;border:1.3px solid var(--line);border-radius:var(--radius);background:var(--white);text-transform:none;letter-spacing:0;font-size:12px;color:var(--ink);white-space:nowrap;cursor:pointer}
+.field label.chk input{min-width:0;width:15px;height:15px;accent-color:var(--blue);cursor:pointer}
+.seg{display:flex;border:1.3px solid var(--ink);border-radius:var(--radius);overflow:hidden}
+.seg button{border:none;background:var(--white);padding:8px 12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:12px;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:none}
+.seg button.on{background:var(--blue);color:var(--white)}
+
+.btn{
+  border:1.3px solid var(--ink);background:var(--ink);color:var(--white);padding:8px 14px;border-radius:var(--radius);
+  cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.03em;display:inline-flex;align-items:center;gap:6px;
+}
+.btn:hover{background:#000}
+.btn.alt{background:var(--white);color:var(--ink)}
+.btn.alt:hover{background:var(--paper-2)}
+.btn.blue{background:var(--blue);border-color:var(--blue)}
+.btn.amber{background:var(--amber);border-color:var(--amber)}
+.btn.sm{padding:5px 9px;font-size:11px}
+.btn.danger{background:var(--white);color:var(--cut);border-color:var(--cut)}
+.btnbar{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---- Table ---- */
+.tablewrap{overflow-x:auto;border:1.3px solid var(--line);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;min-width:640px}
+thead th{
+  background:var(--blue);color:var(--white);font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10.5px;
+  letter-spacing:.05em;text-transform:uppercase;padding:8px 8px;text-align:center;white-space:nowrap;border-right:1px solid rgba(255,255,255,.15);
+}
+thead tr.grp th{background:var(--blue-2);font-size:9.5px}
+tbody td{padding:5px 6px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:center;white-space:nowrap}
+tbody tr:hover{background:var(--paper-2)}
+tbody input{
+  width:78px;padding:5px 6px;border:1px solid var(--line);border-radius:2px;text-align:center;
+  font-family:'IBM Plex Mono',monospace;font-size:12.5px;background:var(--white);
+}
+tbody input:focus{outline:none;border-color:var(--blue-2);background:#fff}
+td.readonly{font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:500;background:var(--paper)}
+td.tag{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:.05em}
+.tag.CUT{color:var(--cut)}
+.tag.FILL{color:var(--fill)}
+.tag.NIL{color:var(--ink-soft)}
+td.rowdel{cursor:pointer;color:var(--cut);font-weight:700}
+.results-table td.num{font-family:'IBM Plex Mono',monospace;text-align:right;padding-right:12px}
+.results-table th{font-size:10px}
+
+/* ---- Number inputs: no up/down spinner arrows ---- */
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+
+/* ---- Data-entry grid: selection, copy / paste ---- */
+.datatools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 8px}
+.sel-status{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);line-height:1.4;flex:1 1 100%;min-height:16px}
+#dataTable th.corner,#dataTable th.colsel{cursor:pointer}
+#dataTable th.corner:hover,#dataTable th.colsel:hover{background:var(--ink)}
+#dataTable thead tr.grp th.colsel:hover{background:var(--blue)}
+#dataTable th.corner{width:34px;min-width:34px}
+#dataTable td.rownum{width:34px;min-width:34px;padding:5px 2px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-soft);background:var(--paper-2);cursor:pointer;user-select:none;-webkit-user-select:none}
+#dataTable td.rownum:hover{background:#d3dccf}
+#dataTable td.rownum.rsel{background:var(--blue-2);color:#fff}
+#dataTable td.sel{background:rgba(62,111,166,.24)}
+#dataTable td.sel input{background:rgba(255,255,255,.6);border-color:var(--blue-2)}
+#dataTable td.anchor input{outline:2px solid var(--blue);outline-offset:-1px}
+#dataTable.dragging,#dataTable.dragging *{user-select:none;-webkit-user-select:none;cursor:cell}
+#gridProxy{position:fixed;left:-9999px;top:0;width:10px;height:10px;opacity:0;pointer-events:none}
+
+/* ---- Toast + modal ---- */
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--white);padding:9px 16px;border-radius:var(--radius);font-family:'IBM Plex Mono',monospace;font-size:12px;z-index:9999;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
+.toast.show{opacity:1}
+.modal-back{position:fixed;inset:0;background:rgba(15,20,18,.55);display:none;align-items:center;justify-content:center;z-index:9000;padding:16px}
+.modal-back.open{display:flex}
+.modal{background:var(--white);border:1.5px solid var(--ink);border-radius:var(--radius);max-width:540px;width:100%;max-height:90vh;overflow:auto;padding:18px 20px}
+.modal h3{margin:0 0 12px;font-size:15px}
+.modal .kv{display:grid;grid-template-columns:96px 1fr;gap:5px 10px;font-size:12.5px;margin-bottom:10px;align-items:baseline}
+.modal .kv b{color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:500}
+.modal .warn,.modal .info{padding:7px 10px;font-size:11.5px;margin:8px 0;line-height:1.5}
+.modal .warn{background:var(--cut-bg);border-left:3px solid var(--cut)}
+.modal .info{background:var(--blue-line);border-left:3px solid var(--blue-2)}
+.modal .btnbar{margin-top:14px;justify-content:flex-end}
+
+/* ---- Charts ---- */
+.chartgrid{display:grid;grid-template-columns:1fr;gap:20px;margin-top:18px}
+.chartcard{border:1.3px solid var(--line);border-radius:var(--radius);padding:14px;background:var(--paper)}
+.chartcard h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;color:var(--blue);margin-bottom:0}
+.chartcard .cc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.chartcard .cc-export{padding:5px 10px;font-size:10px;white-space:nowrap}
+.chartcard .canvaswrap{position:relative;width:100%;overflow-x:auto}
+.chartcard .canvaswrap svg{display:block;font-family:'IBM Plex Mono',monospace;}
+.chartcard .axis-lbl{fill:var(--ink-soft);font-size:9.5px;}
+.chartcard .grid-line{stroke:var(--line);stroke-width:1;stroke-dasharray:2,3;}
+.chartcard .legend-row{display:flex;gap:14px;margin-bottom:6px;flex-wrap:wrap;font-size:10.5px;color:var(--ink-soft);}
+.chartcard .legend-row .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;}
+
+/* ---- Sections grid ---- */
+.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-top:14px}
+.section-card{border:1.3px solid var(--line);border-radius:var(--radius);background:var(--paper);overflow:hidden}
+.section-card .hd{
+  display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--blue);color:var(--white);
+  font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+}
+.section-card .hd .tag{font-size:10px;padding:2px 6px;border-radius:2px;background:rgba(255,255,255,.15)}
+.section-card svg{display:block;width:100%;height:auto;background:var(--white)}
+.section-card .foot{display:flex;justify-content:space-between;padding:6px 12px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-soft);border-top:1px solid var(--line)}
+.section-card .foot b.cut{color:var(--cut)}
+.section-card .foot b.fill{color:var(--fill)}
+
+.empty{padding:30px;text-align:center;color:var(--ink-soft);font-size:13px;border:1.5px dashed var(--line);border-radius:var(--radius)}
+.note{font-size:11px;color:var(--ink-soft);margin-top:8px;line-height:1.5}
+.legend-swatch{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}
+
+@media (max-width:720px){
+  .tb-top{flex-direction:column}
+  .tb-brand{border-right:none;border-bottom:1.5px solid var(--ink)}
+  .tb-fields{grid-template-columns:1fr 1fr}
+  .tb-stats{grid-template-columns:1fr 1fr}
+  .tb-stat:nth-child(2){border-right:none}
+  .tb-stat{border-bottom:1px solid var(--line)}
+  .sheet{padding:14px}
+  .tab{flex:1 1 auto;justify-content:center;padding:10px 8px}
+}
+footer{max-width:1180px;margin:20px auto;text-align:center;font-size:10.5px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace}
+</style>
+</head>
+<body>
+
+<div class="titleblock">
+  <div class="tb-top">
+    <div class="tb-brand">
+      <div class="eyebrow">Earthwork Estimation Sheet</div>
+      <h1>Road Earthwork Volume Calculator</h1>
+      <div class="sub">Average End Area Method · Cut/Fill Zero-Crossing · Multi-Point Sections</div>
+    </div>
+    <div class="tb-fields">
+      <div class="tb-cell"><label>Project</label><input id="pName" value="Untitled Road Project" oninput="renderTitleBlock()"></div>
+      <div class="tb-cell"><label>Chainage From (m)</label><input id="tbFrom" class="mono" readonly></div>
+      <div class="tb-cell"><label>Chainage To (m)</label><input id="tbTo" class="mono" readonly></div>
+      <div class="tb-cell"><label>Reference / Dwg No.</label><input id="pRef" value="RD-EW-01" oninput="renderTitleBlock()"></div>
+      <div class="tb-cell"><label>Prepared By</label><input id="pBy" value="" placeholder="—" oninput="renderTitleBlock()"></div>
+      <div class="tb-cell"><label>Date</label><input id="tbDate" class="mono" readonly></div>
+    </div>
+  </div>
+  <div class="tb-stats">
+    <div class="tb-stat cut"><div class="k">Total Cut</div><div class="v mono" id="statCut">0.00 m³</div></div>
+    <div class="tb-stat fill"><div class="k">Total Fill</div><div class="v mono" id="statFill">0.00 m³</div></div>
+    <div class="tb-stat net"><div class="k">Net (Cut − Fill)</div><div class="v mono" id="statNet">0.00 m³</div></div>
+    <div class="tb-stat"><div class="k">Chainages Recorded</div><div class="v mono" id="statCount">0</div></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="data" onclick="switchTab('data')"><span class="num">DWG‑01</span> Data Entry</div>
+  <div class="tab" data-tab="results" onclick="switchTab('results')"><span class="num">DWG‑02</span> Profile &amp; Volumes</div>
+  <div class="tab" data-tab="sections" onclick="switchTab('sections')"><span class="num">DWG‑03</span> Cross Sections</div>
+</div>
+
+<!-- ============ SHEET 1: DATA ============ -->
+<div class="sheet active" id="sheet-data">
+  <div class="sheet-head">
+    <div><h2>Chainage Data Entry</h2>
+      <div class="hint">Add chainages with ground (Initial) and formation (Final) reduced levels. Rows auto-sort by chainage on blur. Switch section mode to enter multiple points across the carriageway width.</div>
+    </div>
+    <div class="btnbar">
+      <button class="btn amber" onclick="loadSample()">⚡ Load Sample Data</button>
+      <button class="btn" onclick="saveProjectFile()">💾 Save to File</button>
+      <button class="btn" onclick="document.getElementById('openFileInput').click()">📂 Open File…</button>
+      <input type="file" id="openFileInput" accept="application/json,.json" style="display:none" onchange="openProjectFile(event)">
+      <button class="btn" onclick="downloadTemplate()" title="Excel file with a sheet for every layout (2, 3 and 4 points)">📥 Excel Template</button>
+      <button class="btn" onclick="document.getElementById('xlsInput').click()" title="Load chainage levels from the filled-in template (.xlsx) or a CSV file">📤 Upload Excel/CSV</button>
+      <input type="file" id="xlsInput" accept=".xlsx,.xlsm,.csv,.tsv,.txt,text/csv" style="display:none" onchange="handleSpreadsheetUpload(event)">
+      <button class="btn danger" onclick="clearAll()">Clear All</button>
+    </div>
+  </div>
+
+  <div class="controls-row">
+    <div class="field">
+      <label>Section Mode</label>
+      <div class="seg" id="modeSeg">
+        <button data-mode="simple" onclick="setMode('simple')">Simple (Flat)</button>
+        <button data-mode="3pt" onclick="setMode('3pt')">3‑Point</button>
+        <button data-mode="4pt" onclick="setMode('4pt')">4‑Point</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Default Width (m)</label>
+      <input type="number" id="defaultWidth" value="10" step="0.1" min="0.1" oninput="state.defaultWidth=parseFloat(this.value)||10">
+    </div>
+    <div class="field">
+      <label>Cut Side Slope (H:1V)</label>
+      <input type="number" id="cutSlope" value="1.5" step="0.1" min="0" oninput="state.cutSlope=parseFloat(this.value)||0; recompute();">
+    </div>
+    <div class="field">
+      <label>Fill Side Slope (H:1V)</label>
+      <input type="number" id="fillSlope" value="2" step="0.1" min="0" oninput="state.fillSlope=parseFloat(this.value)||0; recompute();">
+    </div>
+    <div class="field">
+      <label>&nbsp;</label>
+      <label class="chk">
+        <input type="checkbox" id="noBatter" onchange="state.noBatter=this.checked; toggleBatterInputs(); recompute();">
+        No batter (retaining walls)
+      </label>
+    </div>
+    <div class="field">
+      <label>&nbsp;</label>
+      <button class="btn blue" onclick="addChainage()">＋ Add Chainage</button>
+    </div>
+  </div>
+  <div class="note" id="batterNote" style="margin-top:-6px;margin-bottom:12px;"></div>
+
+  <div class="controls-row" id="genBar">
+    <div class="field">
+      <label>Start Chainage (m)</label>
+      <input type="number" id="genStart" value="0" step="any">
+    </div>
+    <div class="field">
+      <label>End Chainage (m)</label>
+      <input type="number" id="genEnd" value="500" step="any">
+    </div>
+    <div class="field">
+      <label>Interval (m)</label>
+      <input type="number" id="genInt" value="50" step="any" min="0.01">
+    </div>
+    <div class="field">
+      <label>&nbsp;</label>
+      <button class="btn blue" onclick="generateChainages()" title="Create one row for every interval from start to end chainage (end chainage is always included). Existing chainages are kept.">⚙ Generate Chainages</button>
+    </div>
+  </div>
+
+  <div class="datatools">
+    <button class="btn alt sm" id="btnUndo" onclick="undoLast()" disabled title="Undo the last paste / delete / import (Ctrl+Z)">↶ Undo</button>
+    <button class="btn alt sm" onclick="selectAllCells()">☐ Select all</button>
+    <button class="btn alt sm" onclick="copySelectionBtn()" title="Copy the selected cells so they can be pasted into Excel">⧉ Copy selected</button>
+    <span class="sel-status" id="selStatus"></span>
+  </div>
+  <div class="tablewrap"><table id="dataTable"></table></div>
+  <textarea id="gridProxy" tabindex="-1" aria-hidden="true" autocomplete="off" spellcheck="false"></textarea>
+  <div class="note" id="dataNote"></div>
+</div>
+
+<!-- ============ SHEET 2: RESULTS ============ -->
+<div class="sheet" id="sheet-results">
+  <div class="sheet-head">
+    <div><h2>Longitudinal Profile &amp; Segment Volumes</h2>
+      <div class="hint">Segment volumes computed by the average end area method on cut/fill areas split at each cross-section and at chainage-wise cut↔fill transitions.</div>
+    </div>
+    <div class="btnbar">
+      <button class="btn" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+  </div>
+
+  <div class="tablewrap"><table id="resultsTable" class="results-table"></table></div>
+
+  <div class="chartgrid">
+    <div class="chartcard">
+      <div class="cc-head">
+        <h3>Longitudinal Profile — Ground vs Formation RL</h3>
+        <button class="btn cc-export" onclick="exportChartPNG('chartProfile','Longitudinal Profile — Ground vs Formation RL',[{color:'#4A534E',label:'Ground (Initial) RL'},{color:'#274472',label:'Formation (Final) RL'},{color:'#C98A2C',label:'Cut ↔ Fill transition'}],'longitudinal_profile')">⬇ PNG</button>
+      </div>
+      <div class="canvaswrap" id="chartProfile"></div>
+    </div>
+    <div class="chartcard">
+      <div class="cc-head">
+        <h3>Depth per Chainage (avg. across section, +cut / −fill)</h3>
+        <button class="btn cc-export" onclick="exportChartPNG('chartDepth','Depth per Chainage (avg. across section, +cut / −fill)',[{color:'#B33F1E',label:'Cut (positive)'},{color:'#1F7A5C',label:'Fill (negative)'}],'depth_per_chainage')">⬇ PNG</button>
+      </div>
+      <div class="canvaswrap" id="chartDepth"></div>
+    </div>
+    <div class="chartcard">
+      <div class="cc-head">
+        <h3>Segment Volumes &amp; Cumulative Net</h3>
+        <button class="btn cc-export" onclick="exportChartPNG('chartVolume','Segment Volumes &amp; Cumulative Net',[{color:'#B33F1E',label:'Cut volume (m³)'},{color:'#1F7A5C',label:'Fill volume (m³)'},{color:'#C98A2C',label:'Cumulative net (m³)'}],'segment_volumes')">⬇ PNG</button>
+      </div>
+      <div class="canvaswrap" id="chartVolume"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SHEET 3: SECTIONS ============ -->
+<div class="sheet" id="sheet-sections">
+  <div class="sheet-head">
+    <div><h2>Cross-Section Diagrams</h2>
+      <div class="hint" id="sectionsHint">Ground line (dark) and formation line (blue), shaded cut (red) / fill (teal) zones, with side-slope batters projected at each edge. Vertical scale exaggerated for clarity.</div>
+    </div>
+    <div class="btnbar">
+      <button class="btn" onclick="exportSectionsPDF()">⬇ Export Cross Sections (PDF)</button>
+    </div>
+  </div>
+  <div id="sectionGrid" class="section-grid"></div>
+</div>
+
+<div class="modal-back" id="importModal" onclick="if(event.target===this)closeImportModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="impTitle">
+    <h3 id="impTitle">Import from spreadsheet</h3>
+    <div id="impBody"></div>
+    <div class="btnbar" id="impBtns"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<footer>Average End Area Method · Trapezoidal Cross-Section Areas · All levels in metres · For estimation purposes — verify against approved design drawings</footer>
+
+<script>
+/* ============================================================
+   STATE
+   ============================================================ */
+let state = {
+  mode: 'simple',          // simple | 3pt | 4pt
+  defaultWidth: 10,
+  cutSlope: 1.5,
+  fillSlope: 2,
+  noBatter: false,         // true = vertical faces only (e.g. filling between retaining walls) — no side-slope triangles
+  rows: []                 // {id, ch, width, points:[{initRL,finalRL}], simpleInit, simpleFinal}
+};
+let uid = 1;
+
+function toggleBatterInputs(){
+  const on = !!state.noBatter;
+  ['cutSlope','fillSlope'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.disabled = on;
+  });
+  const note = document.getElementById('batterNote');
+  if(note) note.textContent = on
+    ? 'No-batter mode: cross-section area is the plain trapezoid between the entered points only — no side-slope triangle is added at the edges. Use this for filling/cutting between retaining walls, sheet piles, or other vertical faces.'
+    : 'Side-slope batter triangles are added at both edges, daylighting from the edge point back down to formation level, and included in the cut/fill volumes.';
+  const sh = document.getElementById('sectionsHint');
+  if(sh) sh.textContent = on
+    ? 'Ground line (dark) and formation line (blue), shaded cut (red) / fill (teal) zones, with a retaining-wall symbol at each edge in place of a side-slope batter. Vertical scale exaggerated for clarity.'
+    : 'Ground line (dark) and formation line (blue), shaded cut (red) / fill (teal) zones, with side-slope batters projected at each edge. Vertical scale exaggerated for clarity.';
+}
+
+function pointMeta(mode){
+  if(mode==='simple') return [{label:'Left Edge',frac:-0.5},{label:'Right Edge',frac:0.5}];
+  if(mode==='3pt') return [{label:'Left Edge',frac:-0.5},{label:'Center',frac:0},{label:'Right Edge',frac:0.5}];
+  return [{label:'Left Edge',frac:-0.5},{label:'L 1/3',frac:-1/6},{label:'R 1/3',frac:1/6},{label:'Right Edge',frac:0.5}];
+}
+
+function newRow(ch, width){
+  const meta = pointMeta(state.mode);
+  return {
+    id: uid++,
+    ch: ch,
+    width: width!=null ? width : state.defaultWidth,
+    points: meta.map(()=>({initRL:'', finalRL:''}))
+  };
+}
+
+/* ============================================================
+   SAMPLE DATA
+   ============================================================ */
+function sampleForMode(mode){
+  // base ground/formation trend that transitions cut -> fill -> cut
+  const base = [
+    {ch:0,   g:100.00, f:99.40},
+    {ch:50,  g:100.60, f:99.65},
+    {ch:100, g:101.10, f:99.90},
+    {ch:150, g:100.40, f:100.15},
+    {ch:200, g:99.70,  f:100.40},
+    {ch:250, g:98.90,  f:100.60},
+    {ch:300, g:99.30,  f:100.75},
+    {ch:350, g:100.10, f:100.85},
+    {ch:400, g:100.90, f:100.95},
+  ];
+  return base.map(b=>{
+    const r = newRow(b.ch, 10);
+    if(mode==='simple'){
+      r.points[0]={initRL:b.g.toFixed(2), finalRL:b.f.toFixed(2)};
+      r.points[1]={initRL:b.g.toFixed(2), finalRL:b.f.toFixed(2)};
+    } else if(mode==='3pt'){
+      r.points[0]={initRL:(b.g+0.35).toFixed(2), finalRL:b.f.toFixed(2)};
+      r.points[1]={initRL:b.g.toFixed(2), finalRL:b.f.toFixed(2)};
+      r.points[2]={initRL:(b.g-0.3).toFixed(2), finalRL:b.f.toFixed(2)};
+    } else {
+      r.points[0]={initRL:(b.g+0.45).toFixed(2), finalRL:b.f.toFixed(2)};
+      r.points[1]={initRL:(b.g+0.15).toFixed(2), finalRL:b.f.toFixed(2)};
+      r.points[2]={initRL:(b.g-0.1).toFixed(2), finalRL:b.f.toFixed(2)};
+      r.points[3]={initRL:(b.g-0.35).toFixed(2), finalRL:b.f.toFixed(2)};
+    }
+    return r;
+  });
+}
+
+function loadSample(){
+  if(state.rows.length && !confirm('Load sample data? This will replace current chainages.')) return;
+  pushUndo();
+  state.rows = sampleForMode(state.mode);
+  renderTable();
+  recompute();
+}
+
+function clearAll(){
+  if(!confirm('Clear all chainage data?')) return;
+  pushUndo();
+  state.rows = [];
+  renderTable();
+  recompute();
+}
+
+/* ============================================================
+   SAVE / OPEN PROJECT FILE  (JSON — lets the user pick any folder
+   via the browser's save/open dialog, and resume editing later)
+   ============================================================ */
+function saveProjectFile(){
+  const payload = {
+    __type: 'earthwork-calculator-project',
+    __version: 1,
+    savedAt: new Date().toISOString(),
+    meta: {
+      pName: document.getElementById('pName').value,
+      pRef: document.getElementById('pRef').value,
+      pBy: document.getElementById('pBy').value
+    },
+    state: state,
+    uid: uid
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const a = document.createElement('a');
+  const safeName = (document.getElementById('pName').value || 'earthwork_project').trim().replace(/[^a-z0-9\-_ ]/gi,'').replace(/\s+/g,'_') || 'earthwork_project';
+  a.href = URL.createObjectURL(blob);
+  a.download = safeName + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+function openProjectFile(evt){
+  const file = evt.target.files && evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(){
+    try{
+      const payload = JSON.parse(reader.result);
+      const loadedState = payload.state || payload; // tolerate a raw state dump too
+      if(!loadedState || !Array.isArray(loadedState.rows)) throw new Error('This file does not look like a saved project.');
+      if(state.rows.length && !confirm('Open this file? It will replace the chainage data currently on screen (unsaved changes will be lost).')) return;
+      state = {
+        mode: loadedState.mode || 'simple',
+        defaultWidth: loadedState.defaultWidth!=null ? loadedState.defaultWidth : 10,
+        cutSlope: loadedState.cutSlope!=null ? loadedState.cutSlope : 1.5,
+        fillSlope: loadedState.fillSlope!=null ? loadedState.fillSlope : 2,
+        noBatter: loadedState.noBatter===true,
+        rows: loadedState.rows
+      };
+      uid = (payload.uid!=null ? payload.uid : Math.max(0,...state.rows.map(r=>r.id||0))+1);
+      const meta = payload.meta || {};
+      document.getElementById('pName').value = meta.pName || 'Untitled Road Project';
+      document.getElementById('pRef').value = meta.pRef || '';
+      document.getElementById('pBy').value = meta.pBy || '';
+      document.getElementById('cutSlope').value = state.cutSlope;
+      document.getElementById('fillSlope').value = state.fillSlope;
+      document.getElementById('noBatter').checked = state.noBatter;
+      toggleBatterInputs();
+      document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.mode===state.mode));
+      renderTable();
+      recompute();
+      switchTab('data');
+    }catch(e){
+      alert('Could not open this file: '+e.message);
+    }finally{
+      evt.target.value = '';
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ============================================================
+   AUTOSAVE (this browser only — Save to File is the portable copy)
+   ============================================================ */
+const AUTOSAVE_KEY = 'earthworkCalc_autosave_v1';
+function autosave(){
+  try{
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({
+      meta:{ pName: document.getElementById('pName').value, pRef: document.getElementById('pRef').value, pBy: document.getElementById('pBy').value },
+      state: state, uid: uid
+    }));
+  }catch(e){ /* storage unavailable — ignore */ }
+}
+function tryRestoreAutosave(){
+  try{
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if(!raw) return;
+    const payload = JSON.parse(raw);
+    if(!payload.state || !Array.isArray(payload.state.rows) || !payload.state.rows.length) return;
+    state = payload.state;
+    uid = payload.uid!=null ? payload.uid : Math.max(0,...state.rows.map(r=>r.id||0))+1;
+    if(state.noBatter==null) state.noBatter=false;
+    const meta = payload.meta || {};
+    if(meta.pName) document.getElementById('pName').value = meta.pName;
+    if(meta.pRef) document.getElementById('pRef').value = meta.pRef;
+    if(meta.pBy) document.getElementById('pBy').value = meta.pBy;
+    document.getElementById('cutSlope').value = state.cutSlope;
+    document.getElementById('fillSlope').value = state.fillSlope;
+    document.getElementById('noBatter').checked = state.noBatter;
+    toggleBatterInputs();
+    document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.mode===state.mode));
+  }catch(e){ /* ignore malformed autosave */ }
+}
+
+/* ============================================================
+   MODE SWITCH
+   ============================================================ */
+function setMode(mode){
+  if(mode===state.mode) return;
+  if(state.rows.length && !confirm('Switching section mode changes the point layout and will reset entered RL values. Continue?')){
+    return;
+  }
+  pushUndo();
+  state.mode = mode;
+  document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.mode===mode));
+  state.rows = state.rows.map(r=>newRow(r.ch, r.width));
+  renderTable();
+  recompute();
+}
+document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.mode===state.mode));
+
+/* ============================================================
+   ROW OPS
+   ============================================================ */
+function addChainage(){
+  const lastCh = state.rows.length ? Math.max(...state.rows.map(r=>r.ch)) : -50;
+  state.rows.push(newRow(lastCh+50, state.defaultWidth));
+  renderTable();
+  recompute();
+}
+function generateChainages(){
+  const s = parseFloat(document.getElementById('genStart').value);
+  const e = parseFloat(document.getElementById('genEnd').value);
+  const iv = parseFloat(document.getElementById('genInt').value);
+  if(!isFinite(s) || !isFinite(e) || !isFinite(iv)){ toast('Enter start chainage, end chainage and interval.'); return; }
+  if(iv<=0){ toast('Interval must be greater than zero.'); return; }
+  if(e<=s){ toast('End chainage must be greater than start chainage.'); return; }
+  const count = Math.floor((e-s)/iv + 1e-9) + 1;
+  if(count>2000){ toast('That would create '+count+' rows (limit 2000). Increase the interval.'); return; }
+  const r4 = x => +x.toFixed(4);
+  const list = [];
+  for(let i=0;i<count;i++) list.push(r4(s+i*iv));
+  if(Math.abs(list[list.length-1]-r4(e))>1e-6) list.push(r4(e));     // keep the end chainage even if not a multiple of the interval
+  const have = new Set(state.rows.map(r=>r4(r.ch)));
+  const fresh = list.filter(c=>!have.has(c));
+  if(!fresh.length){ toast('All these chainages already exist.'); return; }
+  pushUndo();
+  sel = null;
+  fresh.forEach(c=>state.rows.push(newRow(c, state.defaultWidth)));
+  sortRows();
+  renderTable();
+  recompute();
+  toast('Added '+fresh.length+' chainage(s) from '+list[0]+' to '+list[list.length-1]+' m'+(list.length-fresh.length ? ' · '+(list.length-fresh.length)+' already existed' : '')+'. Enter the RLs, or paste them from Excel.');
+}
+function deleteRow(id){
+  pushUndo();
+  sel = null;
+  state.rows = state.rows.filter(r=>r.id!==id);
+  renderTable();
+  recompute();
+}
+function sortRows(){
+  state.rows.sort((a,b)=>a.ch-b.ch);
+}
+function updateField(id, field, pointIdx, value){
+  const row = state.rows.find(r=>r.id===id);
+  if(!row) return;
+  if(field==='ch') row.ch = parseFloat(value)||0;
+  else if(field==='width') row.width = parseFloat(value)||state.defaultWidth;
+  else if(field==='initRL') row.points[pointIdx].initRL = value;
+  else if(field==='finalRL') row.points[pointIdx].finalRL = value;
+}
+
+/* ============================================================
+   RENDER: DATA TABLE
+   ============================================================ */
+function renderTable(){
+  const meta = pointMeta(state.mode);
+  const table = document.getElementById('dataTable');
+  const nCols = 2 + meta.length*2;
+  let head1 = '<tr><th rowspan="2" class="corner" title="Select all cells">#</th>'
+    + '<th rowspan="2" class="colsel" data-c0="0" data-c1="0" title="Select column">Chainage (m)</th>'
+    + '<th rowspan="2" class="colsel" data-c0="1" data-c1="1" title="Select column">Width (m)</th>';
+  meta.forEach((m,i)=> head1 += `<th colspan="2" class="colsel" data-c0="${2+2*i}" data-c1="${3+2*i}" title="Select both columns">${m.label}</th>`);
+  head1 += '<th rowspan="2">Cut Area (m²)</th><th rowspan="2">Fill Area (m²)</th><th rowspan="2"></th></tr>';
+  let head2 = '<tr class="grp">';
+  meta.forEach((m,i)=> head2 += `<th class="colsel" data-c0="${2+2*i}" data-c1="${2+2*i}">Initial RL</th><th class="colsel" data-c0="${3+2*i}" data-c1="${3+2*i}">Final RL</th>`);
+  head2 += '</tr>';
+
+  let body = '';
+  if(state.rows.length===0){
+    body = `<tr><td colspan="${nCols+4}"><div class="empty">No chainages yet. Set start / end chainage and interval then click <b>Generate Chainages</b>, or click <b>Add Chainage</b>, <b>Load Sample Data</b> or <b>Upload Excel/CSV</b> to begin.</div></td></tr>`;
+  } else {
+    state.rows.forEach((row,ri)=>{
+      body += `<tr data-id="${row.id}"><td class="rownum" data-r="${ri}" title="Select row">${ri+1}</td>
+        <td><input type="number" class="mono" data-r="${ri}" data-c="0" value="${row.ch}" step="any"
+             onchange="updateField(${row.id},'ch',null,this.value); sortRows(); renderTable(); recompute();"
+             oninput="updateField(${row.id},'ch',null,this.value); recompute();"></td>
+        <td><input type="number" class="mono" data-r="${ri}" data-c="1" value="${row.width}" step="any" min="0.1"
+             oninput="updateField(${row.id},'width',null,this.value); recompute();"></td>`;
+      row.points.forEach((p,i)=>{
+        body += `<td><input type="number" class="mono" data-r="${ri}" data-c="${2+2*i}" value="${p.initRL}" step="any"
+                    oninput="updateField(${row.id},'initRL',${i},this.value); recompute();"></td>
+                  <td><input type="number" class="mono" data-r="${ri}" data-c="${3+2*i}" value="${p.finalRL}" step="any"
+                    oninput="updateField(${row.id},'finalRL',${i},this.value); recompute();"></td>`;
+      });
+      body += `<td class="readonly cut-cell" id="cutcell-${row.id}">—</td>
+                <td class="readonly fill-cell" id="fillcell-${row.id}">—</td>
+                <td class="rowdel" onclick="deleteRow(${row.id})" title="Delete row">✕</td></tr>`;
+    });
+  }
+  table.innerHTML = `<thead>${head1}${head2}</thead><tbody>${body}</tbody>`;
+  document.getElementById('dataNote').innerHTML =
+    state.mode==='simple'
+      ? 'Simple mode: enter the ground and formation level at the left and right road edge (use the same values at both edges for a flat section).'
+      : `Enter Initial RL (existing ground) and Final RL (formation) at each of the ${meta.length} points across the width. Cut/fill is split automatically wherever depth changes sign between adjacent points.`;
+  if(typeof refreshSelectionUI==='function') refreshSelectionUI();
+}
+
+/* ============================================================
+   CORE CALCULATIONS
+   ============================================================ */
+function num(v){ const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+
+function computeSection(row){
+  const meta = pointMeta(state.mode);
+  const w = row.width;
+  const pts = meta.map((m,i)=>{
+    const init = num(row.points[i].initRL);
+    const final = num(row.points[i].finalRL);
+    return { offset: m.frac*w, label: m.label, initRL: init, finalRL: final, depth: init-final };
+  });
+  let cutArea=0, fillArea=0;
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i], b=pts[i+1];
+    const segW = b.offset-a.offset;
+    if(a.depth>=0 && b.depth>=0){
+      cutArea += (a.depth+b.depth)/2*segW;
+    } else if(a.depth<=0 && b.depth<=0){
+      fillArea += (Math.abs(a.depth)+Math.abs(b.depth))/2*segW;
+    } else {
+      const x0 = a.offset + (0-a.depth)/(b.depth-a.depth)*segW;
+      if(a.depth>0){
+        cutArea += 0.5*a.depth*(x0-a.offset);
+        fillArea += 0.5*Math.abs(b.depth)*(b.offset-x0);
+      } else {
+        fillArea += 0.5*Math.abs(a.depth)*(x0-a.offset);
+        cutArea += 0.5*b.depth*(b.offset-x0);
+      }
+    }
+  }
+  // side-slope batter triangles at both edges (daylighting to natural ground) —
+  // skipped entirely in no-batter mode (vertical faces, e.g. retaining walls)
+  const left = pts[0], right = pts[pts.length-1];
+  let leftTri = {area:0, type:null, run:0};
+  let rightTri = {area:0, type:null, run:0};
+  if(!state.noBatter){
+    [ [left,'left'], [right,'right'] ].forEach(([p,side])=>{
+      if(p.depth>0){
+        const run = state.cutSlope*p.depth;
+        const a = 0.5*state.cutSlope*p.depth*p.depth;
+        cutArea += a;
+        if(side==='left') leftTri={area:a,type:'cut',run}; else rightTri={area:a,type:'cut',run};
+      } else if(p.depth<0){
+        const run = state.fillSlope*Math.abs(p.depth);
+        const a = 0.5*state.fillSlope*p.depth*p.depth;
+        fillArea += a;
+        if(side==='left') leftTri={area:a,type:'fill',run}; else rightTri={area:a,type:'fill',run};
+      }
+    });
+  }
+  const avgDepth = pts.reduce((s,p)=>s+p.depth,0)/pts.length;
+  const avgInit = pts.reduce((s,p)=>s+p.initRL,0)/pts.length;
+  const avgFinal = pts.reduce((s,p)=>s+p.finalRL,0)/pts.length;
+  return { pts, cutArea, fillArea, avgDepth, avgInit, avgFinal, leftTri, rightTri, width:w };
+}
+
+let computedRows = []; // sorted rows with .sec attached
+let segments = [];     // between consecutive rows
+
+function recompute(){
+  const rows = [...state.rows].sort((a,b)=>a.ch-b.ch);
+  computedRows = rows.map(r=>({ row:r, sec: computeSection(r) }));
+
+  segments = [];
+  let cumCut=0, cumFill=0;
+  for(let i=0;i<computedRows.length-1;i++){
+    const A = computedRows[i], B = computedRows[i+1];
+    const L = B.row.ch - A.row.ch;
+    const cutVol = (A.sec.cutArea + B.sec.cutArea)/2 * L;
+    const fillVol = (A.sec.fillArea + B.sec.fillArea)/2 * L;
+    cumCut += cutVol; cumFill += fillVol;
+    // transition marker: avg depth sign change -> interpolate crossing chainage
+    let crossing = null;
+    if(L>0 && ((A.sec.avgDepth>0 && B.sec.avgDepth<0) || (A.sec.avgDepth<0 && B.sec.avgDepth>0))){
+      const t = A.sec.avgDepth/(A.sec.avgDepth-B.sec.avgDepth);
+      crossing = A.row.ch + t*L;
+    }
+    segments.push({ from:A.row.ch, to:B.row.ch, L, cutVol, fillVol, cumCut, cumFill, netCum:cumCut-cumFill, crossing });
+  }
+
+  // update per-row cut/fill cells
+  computedRows.forEach(cr=>{
+    const cc = document.getElementById('cutcell-'+cr.row.id);
+    const fc = document.getElementById('fillcell-'+cr.row.id);
+    if(cc) cc.textContent = cr.sec.cutArea>0.0005 ? cr.sec.cutArea.toFixed(3) : '—';
+    if(fc) fc.textContent = cr.sec.fillArea>0.0005 ? cr.sec.fillArea.toFixed(3) : '—';
+  });
+
+  safe(renderTitleBlock);
+  safe(renderResultsTable);
+  safe(renderSections);
+  safe(renderCharts);
+  safe(autosave);
+}
+function safe(fn){
+  try{ fn(); }catch(e){ console.error('Render step failed:', fn.name, e); }
+}
+
+/* ============================================================
+   TITLE BLOCK
+   ============================================================ */
+function renderTitleBlock(){
+  const totalCut = segments.reduce((s,x)=>s+x.cutVol,0);
+  const totalFill = segments.reduce((s,x)=>s+x.fillVol,0);
+  document.getElementById('statCut').textContent = totalCut.toFixed(2)+' m³';
+  document.getElementById('statFill').textContent = totalFill.toFixed(2)+' m³';
+  const net = totalCut-totalFill;
+  const netEl = document.getElementById('statNet');
+  netEl.textContent = (net>=0?'+':'')+net.toFixed(2)+' m³ '+(net>=0?'(surplus cut)':'(deficit / import)');
+  document.getElementById('statCount').textContent = state.rows.length;
+  if(computedRows.length){
+    document.getElementById('tbFrom').value = computedRows[0].row.ch.toFixed(0);
+    document.getElementById('tbTo').value = computedRows[computedRows.length-1].row.ch.toFixed(0);
+  } else {
+    document.getElementById('tbFrom').value='—'; document.getElementById('tbTo').value='—';
+  }
+  document.getElementById('tbDate').value = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  autosave();
+}
+
+/* ============================================================
+   RESULTS TABLE
+   ============================================================ */
+function renderResultsTable(){
+  const table = document.getElementById('resultsTable');
+  if(segments.length===0){
+    table.innerHTML = `<tbody><tr><td><div class="empty">Add at least two chainages to compute segment volumes.</div></td></tr></tbody>`;
+    return;
+  }
+  let head = `<thead><tr>
+    <th>From (m)</th><th>To (m)</th><th>Length (m)</th>
+    <th>Cut Vol (m³)</th><th>Fill Vol (m³)</th>
+    <th>Cum. Cut (m³)</th><th>Cum. Fill (m³)</th><th>Net Cum. (m³)</th><th>Transition</th>
+  </tr></thead>`;
+  let body = '<tbody>';
+  segments.forEach(s=>{
+    body += `<tr>
+      <td class="num">${s.from.toFixed(0)}</td><td class="num">${s.to.toFixed(0)}</td><td class="num">${s.L.toFixed(1)}</td>
+      <td class="num" style="color:var(--cut)">${s.cutVol.toFixed(2)}</td>
+      <td class="num" style="color:var(--fill)">${s.fillVol.toFixed(2)}</td>
+      <td class="num">${s.cumCut.toFixed(2)}</td><td class="num">${s.cumFill.toFixed(2)}</td>
+      <td class="num" style="font-weight:600">${s.netCum.toFixed(2)}</td>
+      <td class="num">${s.crossing!=null ? 'Ch. '+s.crossing.toFixed(1) : '—'}</td>
+    </tr>`;
+  });
+  const totalCut = segments.reduce((s,x)=>s+x.cutVol,0);
+  const totalFill = segments.reduce((s,x)=>s+x.fillVol,0);
+  body += `<tr style="background:var(--paper-2);font-weight:700">
+    <td colspan="3" class="num">TOTAL</td>
+    <td class="num" style="color:var(--cut)">${totalCut.toFixed(2)}</td>
+    <td class="num" style="color:var(--fill)">${totalFill.toFixed(2)}</td>
+    <td colspan="2"></td><td class="num">${(totalCut-totalFill).toFixed(2)}</td><td></td>
+  </tr>`;
+  body += '</tbody>';
+  table.innerHTML = head+body;
+}
+
+/* ============================================================
+   CHARTS
+   ============================================================ */
+/* ---- lightweight dependency-free SVG chart helpers ---- */
+function niceTicks(min,max,count){
+  if(min===max){ min-=1; max+=1; }
+  const range=max-min;
+  const step=range/count;
+  const mag=Math.pow(10,Math.floor(Math.log10(step)));
+  const norm=step/mag;
+  const niceNorm = norm<1.5?1:norm<3?2:norm<7?5:10;
+  const niceStep=niceNorm*mag;
+  const start=Math.floor(min/niceStep)*niceStep;
+  const end=Math.ceil(max/niceStep)*niceStep;
+  const ticks=[];
+  for(let v=start; v<=end+1e-9; v+=niceStep) ticks.push(+v.toFixed(6));
+  return ticks;
+}
+function emptyChart(id,msg){ document.getElementById(id).innerHTML = `<div class="empty">${msg}</div>`; }
+
+function renderProfileSVG(){
+  if(computedRows.length===0){ emptyChart('chartProfile','Add chainage data to see the profile.'); return; }
+  const W=Math.max(680, computedRows.length*110), H=320, padL=54,padR=20,padT=44,padB=66;
+  const xs = computedRows.map(cr=>cr.row.ch);
+  const ground = computedRows.map(cr=>cr.sec.avgInit);
+  const form = computedRows.map(cr=>cr.sec.avgFinal);
+  const depths = computedRows.map(cr=>cr.sec.avgDepth);
+  const minX=Math.min(...xs), maxX=Math.max(...xs);
+  let allY=ground.concat(form);
+  let yTicks=niceTicks(Math.min(...allY),Math.max(...allY),5);
+  const minY=yTicks[0], maxY=yTicks[yTicks.length-1];
+  const X=x=>padL+(maxX===minX?0:(x-minX)/(maxX-minX))*(W-padL-padR);
+  const Y=y=>H-padB-(maxY===minY?0:(y-minY)/(maxY-minY))*(H-padT-padB);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`;
+  yTicks.forEach(t=>{
+    svg+=`<line class="grid-line" x1="${padL}" x2="${W-padR}" y1="${Y(t)}" y2="${Y(t)}"/>`;
+    svg+=`<text class="axis-lbl" x="${padL-8}" y="${Y(t)+3}" text-anchor="end">${t.toFixed(1)}</text>`;
+  });
+  xs.forEach(x=>{ svg+=`<text class="axis-lbl" x="${X(x)}" y="${H-padB+16}" text-anchor="middle">${x}</text>`; });
+  svg+=`<line stroke="#CBD2C6" x1="${padL}" x2="${W-padR}" y1="${H-padB}" y2="${H-padB}"/>`;
+  svg+=`<line stroke="#CBD2C6" x1="${padL}" x2="${padL}" y1="${padT}" y2="${H-padB}"/>`;
+  segments.forEach(s=>{
+    if(s.crossing!=null){
+      const cx=X(s.crossing);
+      svg+=`<line x1="${cx}" x2="${cx}" y1="${padT}" y2="${H-padB}" stroke="#C98A2C" stroke-width="1" stroke-dasharray="4,3"/>`;
+    }
+  });
+  const poly=(vals,color,width,dash)=>{
+    let d=''; vals.forEach((v,i)=>{ d+=(i===0?'M':'L')+X(xs[i])+','+Y(v)+' '; });
+    return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linejoin="round" stroke-linecap="round" ${dash?`stroke-dasharray="${dash}"`:''}/>`;
+  };
+  svg+=poly(form,'#274472',2,'5,3');
+  svg+=poly(ground,'#4A534E',2);
+  // per-chainage depth connector + RL / depth callouts
+  ground.forEach((gv,i)=>{
+    const fv=form[i], gx=X(xs[i]), gy=Y(gv), fy=Y(fv);
+    if(Math.abs(gv-fv)>0.001) svg+=`<line x1="${gx}" y1="${gy}" x2="${gx}" y2="${fy}" stroke="#8B8F86" stroke-width="0.6" stroke-dasharray="1.5,2"/>`;
+    const isCut = depths[i]>=0;
+    const anchor = i===0?'start':(i===xs.length-1?'end':'middle');
+    const dx = i===0?3:(i===xs.length-1?-3:0);
+    const top = Math.min(gy,fy);
+    svg+=`<text x="${gx+dx}" y="${top-24}" font-size="7.6" fill="#4A534E" text-anchor="${anchor}">IRL ${gv.toFixed(2)}</text>`;
+    svg+=`<text x="${gx+dx}" y="${top-14}" font-size="7.6" fill="#274472" text-anchor="${anchor}">FRL ${fv.toFixed(2)}</text>`;
+    svg+=`<text x="${gx+dx}" y="${top-4}" font-size="7.6" font-weight="700" fill="${isCut?'#B33F1E':'#1F7A5C'}" text-anchor="${anchor}">${isCut?'+':''}${depths[i].toFixed(2)}m ${isCut?'C':'F'}</text>`;
+  });
+  ground.forEach((v,i)=>{ svg+=`<circle cx="${X(xs[i])}" cy="${Y(v)}" r="2.6" fill="#4A534E"/>`; });
+  form.forEach((v,i)=>{ svg+=`<circle cx="${X(xs[i])}" cy="${Y(v)}" r="2.4" fill="#274472"/>`; });
+  // chainage-to-chainage length dimension row
+  const dimY = H-padB+34;
+  for(let i=0;i<xs.length-1;i++){
+    svg+=extLine(X(xs[i]), H-padB, dimY);
+    svg+=dimSeg(X, xs[i], xs[i+1], dimY, (xs[i+1]-xs[i]).toFixed(1)+'m', 7.6);
+  }
+  if(xs.length) svg+=extLine(X(xs[xs.length-1]), H-padB, dimY);
+  svg+='</svg>';
+  document.getElementById('chartProfile').innerHTML =
+    `<div class="legend-row"><span><span class="sw" style="background:#4A534E"></span>Ground (Initial) RL</span><span><span class="sw" style="background:#274472"></span>Formation (Final) RL</span><span><span class="sw" style="background:#C98A2C"></span>Cut ↔ Fill transition</span></div>`+svg;
+}
+
+function renderDepthSVG(){
+  if(computedRows.length===0){ emptyChart('chartDepth','Add chainage data to see the depth chart.'); return; }
+  const W=Math.max(640, computedRows.length*80), H=220, padL=50,padR=20,padT=14,padB=32;
+  const depths = computedRows.map(cr=>cr.sec.avgDepth);
+  const maxAbs = Math.max(1, ...depths.map(Math.abs));
+  const yTicks = niceTicks(-maxAbs,maxAbs,4);
+  const minY=yTicks[0], maxY=yTicks[yTicks.length-1];
+  const Y=y=>padT+(1-(y-minY)/(maxY-minY))*(H-padT-padB);
+  const bw=(W-padL-padR)/computedRows.length;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`;
+  yTicks.forEach(t=>{
+    svg+=`<line class="grid-line" x1="${padL}" x2="${W-padR}" y1="${Y(t)}" y2="${Y(t)}"/>`;
+    svg+=`<text class="axis-lbl" x="${padL-8}" y="${Y(t)+3}" text-anchor="end">${t.toFixed(1)}</text>`;
+  });
+  const y0=Y(0);
+  svg+=`<line stroke="#CBD2C6" x1="${padL}" x2="${W-padR}" y1="${y0}" y2="${y0}"/>`;
+  computedRows.forEach((cr,i)=>{
+    const cx=padL+i*bw+bw/2, d=depths[i], barW=Math.min(36,bw*0.55);
+    const y1=Y(d), top=Math.min(y0,y1), h=Math.max(Math.abs(y0-y1),1);
+    const col = d>=0?'rgba(179,63,30,.78)':'rgba(31,122,92,.78)';
+    svg+=`<rect x="${cx-barW/2}" y="${top}" width="${barW}" height="${h}" fill="${col}" rx="2"/>`;
+    svg+=`<text class="axis-lbl" x="${cx}" y="${H-padB+16}" text-anchor="middle">${cr.row.ch}</text>`;
+    svg+=`<text class="axis-lbl" x="${cx}" y="${d>=0?top-5:top+h+11}" text-anchor="middle" fill="${d>=0?'#B33F1E':'#1F7A5C'}" font-weight="600">${d.toFixed(2)}</text>`;
+  });
+  svg+='</svg>';
+  document.getElementById('chartDepth').innerHTML = svg;
+}
+
+function renderVolumeSVG(){
+  if(segments.length===0){ emptyChart('chartVolume','Add at least two chainages to compute segment volumes.'); return; }
+  const W=Math.max(640, segments.length*110), H=260, padL=58,padR=44,padT=14,padB=44;
+  const maxV = Math.max(1, ...segments.map(s=>Math.max(s.cutVol,s.fillVol)));
+  const yTicks = niceTicks(0,maxV,5);
+  const maxY=yTicks[yTicks.length-1];
+  const netVals = segments.map(s=>s.netCum);
+  const netMin=Math.min(0,...netVals), netMax=Math.max(0,...netVals);
+  const netTicks = niceTicks(netMin,netMax,4);
+  const netLo=netTicks[0], netHi=netTicks[netTicks.length-1];
+  const Y=v=>padT+(1-v/maxY)*(H-padT-padB);
+  const Y2=v=>padT+(1-(v-netLo)/(netHi-netLo))*(H-padT-padB);
+  const groupW=(W-padL-padR)/segments.length;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`;
+  yTicks.forEach(t=>{
+    svg+=`<line class="grid-line" x1="${padL}" x2="${W-padR}" y1="${Y(t)}" y2="${Y(t)}"/>`;
+    svg+=`<text class="axis-lbl" x="${padL-8}" y="${Y(t)+3}" text-anchor="end">${t.toFixed(0)}</text>`;
+  });
+  netTicks.forEach(t=>{
+    svg+=`<text class="axis-lbl" x="${W-padR+8}" y="${Y2(t)+3}" text-anchor="start" fill="#C98A2C">${t.toFixed(0)}</text>`;
+  });
+  svg+=`<line stroke="#CBD2C6" x1="${padL}" x2="${W-padR}" y1="${Y(0)}" y2="${Y(0)}"/>`;
+  segments.forEach((s,i)=>{
+    const gx=padL+i*groupW, barW=Math.min(30,groupW*0.26), gap=6;
+    const x1=gx+groupW/2-barW-gap/2, x2=gx+groupW/2+gap/2;
+    const yC=Y(s.cutVol), yF=Y(s.fillVol), y0=Y(0);
+    svg+=`<rect x="${x1}" y="${yC}" width="${barW}" height="${Math.max(y0-yC,0)}" fill="rgba(179,63,30,.78)" rx="2"/>`;
+    svg+=`<rect x="${x2}" y="${yF}" width="${barW}" height="${Math.max(y0-yF,0)}" fill="rgba(31,122,92,.78)" rx="2"/>`;
+    svg+=`<text class="axis-lbl" x="${gx+groupW/2}" y="${H-padB+16}" text-anchor="middle">${s.from.toFixed(0)}–${s.to.toFixed(0)}</text>`;
+    svg+=`<text class="axis-lbl" x="${gx+groupW/2}" y="${H-padB+28}" text-anchor="middle" opacity="0.7">L=${s.L.toFixed(0)}m</text>`;
+  });
+  let nd=''; segments.forEach((s,i)=>{ const cx=padL+i*groupW+groupW/2; nd+=(i===0?'M':'L')+cx+','+Y2(s.netCum)+' '; });
+  svg+=`<path d="${nd}" fill="none" stroke="#C98A2C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  segments.forEach((s,i)=>{ const cx=padL+i*groupW+groupW/2; svg+=`<circle cx="${cx}" cy="${Y2(s.netCum)}" r="2.6" fill="#C98A2C"/>`; });
+  svg+='</svg>';
+  document.getElementById('chartVolume').innerHTML =
+    `<div class="legend-row"><span><span class="sw" style="background:rgba(179,63,30,.78)"></span>Cut volume (m³)</span><span><span class="sw" style="background:rgba(31,122,92,.78)"></span>Fill volume (m³)</span><span><span class="sw" style="background:#C98A2C"></span>Cumulative net (m³, right axis)</span></div>`+svg;
+}
+
+function renderCharts(){
+  renderProfileSVG();
+  renderDepthSVG();
+  renderVolumeSVG();
+}
+
+/* ============================================================
+   CROSS SECTION SVG
+   ============================================================ */
+function dimSeg(X,x1,x2,y,label,fs=8){
+  const s=4;
+  let out=`<line x1="${X(x1)}" y1="${y}" x2="${X(x2)}" y2="${y}" stroke="#8B8F86" stroke-width="0.7"/>`;
+  out+=`<path d="M${X(x1)},${y} L${X(x1)+s},${y-2.2} M${X(x1)},${y} L${X(x1)+s},${y+2.2}" stroke="#8B8F86" stroke-width="0.7" fill="none"/>`;
+  out+=`<path d="M${X(x2)},${y} L${X(x2)-s},${y-2.2} M${X(x2)},${y} L${X(x2)-s},${y+2.2}" stroke="#8B8F86" stroke-width="0.7" fill="none"/>`;
+  out+=`<text x="${(X(x1)+X(x2))/2}" y="${y-3}" font-size="${fs}" fill="#1C2321" text-anchor="middle">${label}</text>`;
+  return out;
+}
+function extLine(x,y1,y2){ return `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="#CBD2C6" stroke-width="0.6" stroke-dasharray="2,2"/>`; }
+
+function sectionSVG(cr, w=380, h=320){
+  const sec = cr.sec, pts = sec.pts;
+  const hasBatter = !state.noBatter;
+  const leftRun = hasBatter ? (sec.leftTri.run||0.6) : 0;
+  const rightRun = hasBatter ? (sec.rightTri.run||0.6) : 0;
+  const edgeMargin = hasBatter ? Math.max(leftRun,0.6) : 0.55;
+  const edgeMarginR = hasBatter ? Math.max(rightRun,0.6) : 0.55;
+  const xMin = pts[0].offset - edgeMargin;
+  const xMax = pts[pts.length-1].offset + edgeMarginR;
+  const allRL = pts.flatMap(p=>[p.initRL,p.finalRL]);
+  const dlLeft = pts[0].finalRL;
+  const dlRight = pts[pts.length-1].finalRL;
+  allRL.push(dlLeft,dlRight);
+  const yMin = Math.min(...allRL), yMax = Math.max(...allRL);
+  const pad = 46;
+  const padBot = 84;
+  const rlPad = Math.max((yMax-yMin)*0.55, 0.5);
+  const yLo = yMin-rlPad, yHi = yMax+rlPad;
+  const X = x => pad + (x-xMin)/(xMax-xMin) * (w-2*pad);
+  const Y = y => (h-padBot) - (y-yLo)/(yHi-yLo) * (h-padBot-24);
+
+  const groundPts = hasBatter
+    ? [[xMin, dlLeft], ...pts.map(p=>[p.offset,p.initRL]), [xMax, dlRight]]
+    : pts.map(p=>[p.offset,p.initRL]);
+  const formPts = pts.map(p=>[p.offset,p.finalRL]);
+  const groundPath = groundPts.map((p,i)=>(i===0?'M':'L')+X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join(' ');
+  const formPath = formPts.map((p,i)=>(i===0?'M':'L')+X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join(' ');
+
+  let shades = '';
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i], b=pts[i+1];
+    const poly = `${X(a.offset)},${Y(a.initRL)} ${X(b.offset)},${Y(b.initRL)} ${X(b.offset)},${Y(b.finalRL)} ${X(a.offset)},${Y(a.finalRL)}`;
+    const col = (a.depth+b.depth)>=0 ? 'rgba(179,63,30,.18)' : 'rgba(31,122,92,.18)';
+    shades += `<polygon points="${poly}" fill="${col}" stroke="none"/>`;
+  }
+  const leftCol = hasBatter && sec.leftTri.type==='cut' ? 'rgba(179,63,30,.18)' : hasBatter && sec.leftTri.type==='fill' ? 'rgba(31,122,92,.18)' : 'none';
+  const rightCol = hasBatter && sec.rightTri.type==='cut' ? 'rgba(179,63,30,.18)' : hasBatter && sec.rightTri.type==='fill' ? 'rgba(31,122,92,.18)' : 'none';
+  const leftTriPts = `${X(xMin)},${Y(dlLeft)} ${X(pts[0].offset)},${Y(pts[0].initRL)} ${X(pts[0].offset)},${Y(pts[0].finalRL)}`;
+  const rightTriPts = `${X(xMax)},${Y(dlRight)} ${X(pts[pts.length-1].offset)},${Y(pts[pts.length-1].initRL)} ${X(pts[pts.length-1].offset)},${Y(pts[pts.length-1].finalRL)}`;
+
+  // retaining-wall symbols at both edges when batters are switched off
+  let wallShapes = '';
+  if(!hasBatter){
+    const wallPx = 7;
+    [[pts[0],'left'], [pts[pts.length-1],'right']].forEach(([p,side])=>{
+      const topY = Y(Math.max(p.initRL,p.finalRL)) - 7;
+      const botY = Y(Math.min(p.initRL,p.finalRL)) + 12;
+      const gx = X(p.offset);
+      const rx = side==='left' ? gx-wallPx : gx;
+      wallShapes += `<rect x="${rx.toFixed(1)}" y="${topY.toFixed(1)}" width="${wallPx}" height="${(botY-topY).toFixed(1)}" fill="#9AA0A6" stroke="#3F4650" stroke-width="0.7"/>`;
+      for(let ty=topY+4; ty<botY-2; ty+=6){
+        wallShapes += `<line x1="${rx.toFixed(1)}" y1="${ty.toFixed(1)}" x2="${(rx+wallPx).toFixed(1)}" y2="${(ty+4).toFixed(1)}" stroke="#3F4650" stroke-width="0.5"/>`;
+      }
+      const lx = side==='left' ? rx-4 : rx+wallPx+4;
+      const midY = (topY+botY)/2;
+      wallShapes += `<text x="${lx.toFixed(1)}" y="${midY.toFixed(1)}" font-size="7" fill="#3F4650" text-anchor="${side==='left'?'end':'start'}" transform="rotate(-90 ${lx.toFixed(1)} ${midY.toFixed(1)})">RETAINING WALL</text>`;
+    });
+  }
+
+  // point markers + RL / depth callouts
+  let markers = '', callouts = '';
+  pts.forEach((p,i)=>{
+    const gx=X(p.offset), gy=Y(p.initRL), fy=Y(p.finalRL);
+    markers += `<circle cx="${gx}" cy="${gy}" r="2.8" fill="#1C2321"/>`;
+    markers += `<circle cx="${gx}" cy="${fy}" r="2.8" fill="#274472"/>`;
+    // vertical depth connector with its own tick arrows when the two levels differ
+    if(Math.abs(p.depth)>0.001){
+      markers += `<line x1="${gx}" y1="${gy}" x2="${gx}" y2="${fy}" stroke="#8B8F86" stroke-width="0.6" stroke-dasharray="1.5,2"/>`;
+    }
+    const isCut = p.depth>=0;
+    const anchor = i===0 ? 'start' : (i===pts.length-1 ? 'end' : 'middle');
+    const dx = i===0 ? 2 : (i===pts.length-1 ? -2 : 0);
+    // stack labels away from the shaded body: above ground point for cut, below for fill
+    const dir = isCut ? -1 : 1;
+    const y0 = isCut ? Math.min(gy,fy) : Math.max(gy,fy);
+    const l1 = y0 + dir*10, l2 = y0 + dir*20, l3 = y0 + dir*30;
+    callouts += `<text x="${gx+dx}" y="${l1}" font-size="7.6" fill="#4A534E" text-anchor="${anchor}">IRL ${p.initRL.toFixed(2)}</text>`;
+    callouts += `<text x="${gx+dx}" y="${l2}" font-size="7.6" fill="#274472" text-anchor="${anchor}">FRL ${p.finalRL.toFixed(2)}</text>`;
+    callouts += `<text x="${gx+dx}" y="${l3}" font-size="7.6" font-weight="700" fill="${isCut?'#B33F1E':'#1F7A5C'}" text-anchor="${anchor}">${isCut?'+':''}${p.depth.toFixed(2)}m ${isCut?'CUT':'FILL'}</text>`;
+  });
+
+  // dimension row: left run | segment widths | right run, all on one baseline
+  const dimY = h-padBot+46;
+  let dims = '';
+  dims += extLine(X(xMin),Y(dlLeft),dimY);
+  for(let i=0;i<pts.length;i++) dims += extLine(X(pts[i].offset), Math.max(Y(pts[i].initRL),Y(pts[i].finalRL)), dimY);
+  dims += extLine(X(xMax),Y(dlRight),dimY);
+  if(leftRun>0.05) dims += dimSeg(X, xMin, pts[0].offset, dimY, leftRun.toFixed(2)+'m batter');
+  dims += dimSeg(X, pts[0].offset, pts[pts.length-1].offset, dimY, sec.width.toFixed(2)+'m formation width', 8.5);
+  if(rightRun>0.05) dims += dimSeg(X, pts[pts.length-1].offset, xMax, dimY, rightRun.toFixed(2)+'m batter');
+  // per-segment length row (only when more than 2 points across the width)
+  let segDims = '';
+  if(pts.length>2){
+    const dimY2 = dimY-16;
+    for(let i=0;i<pts.length-1;i++){
+      segDims += dimSeg(X, pts[i].offset, pts[i+1].offset, dimY2, (pts[i+1].offset-pts[i].offset).toFixed(2)+'m', 7.5);
+    }
+  }
+
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace">
+    <rect x="0" y="0" width="${w}" height="${h}" fill="#FBFAF6"/>
+    ${shades}
+    ${leftCol!=='none'?`<polygon points="${leftTriPts}" fill="${leftCol}"/>`:''}
+    ${rightCol!=='none'?`<polygon points="${rightTriPts}" fill="${rightCol}"/>`:''}
+    <path d="${groundPath}" fill="none" stroke="#1C2321" stroke-width="1.6"/>
+    <path d="${formPath}" fill="none" stroke="#274472" stroke-width="1.8" stroke-dasharray="5,3"/>
+    ${wallShapes}
+    ${markers}
+    ${callouts}
+    ${segDims}
+    ${dims}
+    <text x="${pad}" y="${h-8}" font-size="8.5" fill="#4A534E">Chainage ${cr.row.ch} m · CL offset (m)${hasBatter?'':' · vertical faces (no batter)'}</text>
+  </svg>`;
+}
+
+function renderSections(){
+  const grid = document.getElementById('sectionGrid');
+  if(computedRows.length===0){
+    grid.innerHTML = '<div class="empty">No chainages to display. Add data on the Data Entry sheet.</div>';
+    return;
+  }
+  grid.innerHTML = computedRows.map(cr=>{
+    const sec = cr.sec;
+    const tagType = sec.avgDepth>0.001 ? 'CUT' : sec.avgDepth<-0.001 ? 'FILL' : 'NIL';
+    return `<div class="section-card">
+      <div class="hd"><span>Chainage ${cr.row.ch.toFixed(0)} m</span><span class="tag">${tagType}</span></div>
+      ${sectionSVG(cr)}
+      <div class="foot">
+        <span>Cut: <b class="cut">${sec.cutArea.toFixed(2)} m²</b></span>
+        <span>Fill: <b class="fill">${sec.fillArea.toFixed(2)} m²</b></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   TABS
+   ============================================================ */
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.toggle('active', s.id==='sheet-'+name));
+}
+
+/* ============================================================
+   CSV EXPORT
+   ============================================================ */
+function exportCSV(){
+  if(computedRows.length===0){ alert('No data to export.'); return; }
+  const meta = pointMeta(state.mode);
+  let rows = [];
+  let header = ['Chainage (m)','Width (m)'];
+  meta.forEach(m=>{ header.push(m.label+' Initial RL', m.label+' Final RL'); });
+  header.push('Cut Area (m2)','Fill Area (m2)','Avg Depth (m)');
+  rows.push(header);
+  computedRows.forEach(cr=>{
+    let r = [cr.row.ch, cr.row.width];
+    cr.sec.pts.forEach(p=>{ r.push(p.initRL, p.finalRL); });
+    r.push(cr.sec.cutArea.toFixed(3), cr.sec.fillArea.toFixed(3), cr.sec.avgDepth.toFixed(3));
+    rows.push(r);
+  });
+  rows.push([]);
+  rows.push(['From (m)','To (m)','Length (m)','Cut Vol (m3)','Fill Vol (m3)','Cum Cut (m3)','Cum Fill (m3)','Net Cum (m3)','Transition Chainage']);
+  segments.forEach(s=>{
+    rows.push([s.from,s.to,s.L.toFixed(2),s.cutVol.toFixed(3),s.fillVol.toFixed(3),s.cumCut.toFixed(3),s.cumFill.toFixed(3),s.netCum.toFixed(3), s.crossing!=null?s.crossing.toFixed(2):'']);
+  });
+  const totalCut = segments.reduce((s,x)=>s+x.cutVol,0);
+  const totalFill = segments.reduce((s,x)=>s+x.fillVol,0);
+  rows.push([]);
+  rows.push(['TOTAL CUT (m3)', totalCut.toFixed(3)]);
+  rows.push(['TOTAL FILL (m3)', totalFill.toFixed(3)]);
+  rows.push(['NET (m3)', (totalCut-totalFill).toFixed(3)]);
+
+  const csv = rows.map(r=>r.map(v=>{
+    v = String(v??'');
+    return /[,"\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
+  }).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = (document.getElementById('pName').value||'earthwork').replace(/\s+/g,'_')+'_earthwork.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   PDF EXPORT OF CROSS SECTIONS
+   ============================================================ */
+/* ============================================================
+   CHART PNG EXPORT (Longitudinal Profile, Depth per Chainage,
+   Segment Volumes) — rasterizes the on-screen SVG chart, with
+   a title and legend baked in, to a downloadable PNG
+   ============================================================ */
+function exportChartPNG(containerId, title, legendItems, filenameBase){
+  const container = document.getElementById(containerId);
+  const svg = container && container.querySelector('svg');
+  if(!svg){ alert('Add chainage data first — nothing to export yet.'); return; }
+  const vb = (svg.getAttribute('viewBox')||'0 0 640 260').split(' ').map(Number);
+  const W = vb[2], H = vb[3];
+  const legendH = legendItems && legendItems.length ? 20 : 0;
+  const topPad = 30 + legendH;
+  const totalW = W, totalH = H + topPad + 12;
+  let legendSvg = '';
+  if(legendItems && legendItems.length){
+    let lx = 8, ly = topPad-14;
+    legendItems.forEach(it=>{
+      legendSvg += `<rect x="${lx}" y="${ly-9}" width="10" height="10" rx="2" fill="${it.color}"/>`;
+      legendSvg += `<text x="${lx+14}" y="${ly}" font-size="9.5" fill="#4A534E" font-family="IBM Plex Mono, monospace">${it.label}</text>`;
+      lx += it.label.length*5.6+34;
+    });
+  }
+  const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalW} ${totalH}" width="${totalW}" height="${totalH}">
+    <style>.axis-lbl{fill:#4A534E;font-size:9.5px;font-family:'IBM Plex Mono',monospace} .grid-line{stroke:#CBD2C6;stroke-width:1;stroke-dasharray:2,3}</style>
+    <rect x="0" y="0" width="${totalW}" height="${totalH}" fill="#FBFAF6"/>
+    <text x="8" y="18" font-size="12.5" font-weight="700" fill="#1C2321" font-family="IBM Plex Mono, monospace">${title}</text>
+    ${legendSvg}
+    <g transform="translate(0,${topPad})">${svg.innerHTML}</g>
+  </svg>`;
+  svgToPngDataUrl(svgStr, totalW, totalH, 2).then(dataUrl=>{
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filenameBase+'.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }).catch(()=>alert('Could not export this chart as an image.'));
+}
+
+function svgToPngDataUrl(svgString, w, h, scale=2){
+  return new Promise((resolve,reject)=>{
+    const svg64 = 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgString);
+    const img = new Image();
+    img.onload = ()=>{
+      const canvas = document.createElement('canvas');
+      canvas.width = w*scale; canvas.height = h*scale;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#FBFAF6'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = reject;
+    img.src = svg64;
+  });
+}
+
+async function exportSectionsPDF(){
+  if(computedRows.length===0){ alert('No cross sections to export.'); return; }
+  const btn = event.target;
+  const origText = btn.textContent;
+  btn.textContent = 'Generating…'; btn.disabled = true;
+  try{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'pt', format:'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 30;
+    const cardW = (pageW-margin*2-16)/2;
+    const cardH = 190;
+    let x = margin, y = margin;
+    let col = 0, row = 0;
+    const rowsPerPage = Math.floor((pageH-margin*2-40)/(cardH+34));
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(14);
+    doc.text((document.getElementById('pName').value||'Road Project')+' — Cross Sections', margin, margin);
+    doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.text('Generated '+new Date().toLocaleDateString(), margin, margin+14);
+    y = margin+34;
+
+    for(let i=0;i<computedRows.length;i++){
+      const cr = computedRows[i];
+      const svgW=380, svgH=320;
+      const dataUrl = await svgToPngDataUrl(sectionSVG(cr,svgW,svgH), svgW, svgH, 2.2);
+      col = i % 2;
+      x = margin + col*(cardW+16);
+      if(col===0 && i>0){ y += cardH+34; }
+      if(y + cardH+34 > pageH-margin){
+        doc.addPage(); y = margin; row=0;
+        x = margin;
+      }
+      doc.setDrawColor(180); doc.setLineWidth(0.6);
+      doc.rect(x,y,cardW,cardH+26);
+      doc.setFillColor(39,68,114); doc.rect(x,y,cardW,18,'F');
+      doc.setTextColor(255); doc.setFontSize(9); doc.setFont('helvetica','bold');
+      doc.text('Chainage '+cr.row.ch.toFixed(0)+' m', x+6, y+12.5);
+      doc.setTextColor(0);
+      const imgH = cardH-6;
+      const imgW = imgH*(svgW/svgH);
+      const imgX = x + (cardW-imgW)/2;
+      doc.addImage(dataUrl,'PNG', imgX, y+20, imgW, imgH);
+      doc.setFontSize(8); doc.setFont('helvetica','normal');
+      doc.setTextColor(179,63,30);
+      doc.text('Cut '+cr.sec.cutArea.toFixed(2)+' m²', x+6, y+cardH+20);
+      doc.setTextColor(31,122,92);
+      doc.text('Fill '+cr.sec.fillArea.toFixed(2)+' m²', x+cardW-6, y+cardH+20, {align:'right'});
+      doc.setTextColor(0);
+    }
+    doc.save((document.getElementById('pName').value||'earthwork').replace(/\s+/g,'_')+'_cross_sections.pdf');
+  } catch(e){
+    console.error(e);
+    alert('PDF export failed: '+e.message);
+  } finally {
+    btn.textContent = origText; btn.disabled = false;
+  }
+}
+
+/* ============================================================
+   UTILITIES: toast, escaping, undo
+   ============================================================ */
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+let toastTimer = null;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 3200);
+}
+
+const undoStack = [];
+function pushUndo(){
+  undoStack.push(JSON.stringify({rows:state.rows, mode:state.mode, uid:uid}));
+  if(undoStack.length>25) undoStack.shift();
+  updateUndoBtn();
+}
+function updateUndoBtn(){
+  const b = document.getElementById('btnUndo');
+  if(b) b.disabled = undoStack.length===0;
+}
+function undoLast(){
+  if(!undoStack.length) return;
+  const snap = JSON.parse(undoStack.pop());
+  state.rows = snap.rows;
+  if(snap.mode!==state.mode){
+    state.mode = snap.mode;
+    document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.mode===state.mode));
+  }
+  uid = Math.max(uid, snap.uid);
+  sel = null;
+  renderTable(); recompute(); updateUndoBtn();
+  toast('Undone');
+}
+
+/* ============================================================
+   DATA GRID: multi-cell selection, copy / cut / paste / delete
+   Columns: 0 = chainage, 1 = width, 2+2i = initial RL, 3+2i = final RL
+   ============================================================ */
+let sel = null;          // {ar,ac,fr,fc}: anchor and focus cell (row, column)
+let selDrag = null;      // 'cell' | 'row' while the mouse button is held
+const DEFAULT_TIP = 'Tip: drag across cells (or click a row number / column heading) to select, then Ctrl+C, Ctrl+V or Delete. Arrow keys and Enter move between cells.';
+
+function maxCol(){ return 1 + pointMeta(state.mode).length*2; }
+function selRect(){
+  if(!sel) return null;
+  return {r1:Math.min(sel.ar,sel.fr), r2:Math.max(sel.ar,sel.fr), c1:Math.min(sel.ac,sel.fc), c2:Math.max(sel.ac,sel.fc)};
+}
+function selIsMulti(){ const q = selRect(); return !!q && (q.r1!==q.r2 || q.c1!==q.c2); }
+function cellEl(r,c){ return document.querySelector('#dataTable input[data-r="'+r+'"][data-c="'+c+'"]'); }
+function blurActive(){ const a = document.activeElement; if(a && a!==document.body && a.blur) a.blur(); }
+
+function setSel(ar,ac,fr,fc){
+  sel = {ar:ar, ac:ac, fr:fr, fc:fc};
+  refreshSelectionUI();
+}
+function clearSel(){
+  sel = null;
+  refreshSelectionUI();
+  const p = document.getElementById('gridProxy');
+  if(p && document.activeElement===p) p.blur();
+}
+function refreshSelectionUI(){
+  const table = document.getElementById('dataTable');
+  if(!table) return;
+  table.querySelectorAll('td.sel,td.anchor').forEach(td=>td.classList.remove('sel','anchor'));
+  table.querySelectorAll('td.rownum.rsel').forEach(td=>td.classList.remove('rsel'));
+  const status = document.getElementById('selStatus');
+  if(sel && sel.ar>=state.rows.length) sel = null;
+  if(sel && sel.fr>=state.rows.length) sel.fr = state.rows.length-1;
+  const q = selRect();
+  if(q && selIsMulti()){
+    table.querySelectorAll('tbody input[data-r]').forEach(inp=>{
+      const r = +inp.dataset.r, c = +inp.dataset.c;
+      if(r>=q.r1 && r<=q.r2 && c>=q.c1 && c<=q.c2){
+        const td = inp.closest('td');
+        td.classList.add('sel');
+        if(r===sel.ar && c===sel.ac) td.classList.add('anchor');
+      }
+    });
+    table.querySelectorAll('td.rownum').forEach(td=>{
+      const r = +td.dataset.r;
+      if(r>=q.r1 && r<=q.r2 && q.c1===0 && q.c2===maxCol()) td.classList.add('rsel');
+    });
+    if(status) status.textContent = (q.r2-q.r1+1)+' row(s) × '+(q.c2-q.c1+1)+' column(s) selected — Ctrl+C copy · Ctrl+X cut · Ctrl+V paste · Delete clear · Esc deselect';
+  } else if(status){
+    status.textContent = DEFAULT_TIP;
+  }
+}
+
+function cellValue(r,c){
+  const row = state.rows[r];
+  if(!row) return '';
+  let v;
+  if(c===0) v = row.ch;
+  else if(c===1) v = row.width;
+  else { const p = row.points[(c-2)>>1]; v = p ? ((c-2)%2===0 ? p.initRL : p.finalRL) : ''; }
+  return v==null ? '' : String(v);
+}
+function selectionToTSV(){
+  const q = selRect();
+  if(!q) return '';
+  const lines = [];
+  for(let r=q.r1; r<=q.r2; r++){
+    const cells = [];
+    for(let c=q.c1; c<=q.c2; c++) cells.push(cellValue(r,c));
+    lines.push(cells.join('\t'));
+  }
+  return lines.join('\n');
+}
+// Keeps keyboard focus in a hidden textarea while several cells are selected, so the
+// browser's own copy / cut / paste events work (same technique spreadsheets use).
+function syncProxy(){
+  const p = document.getElementById('gridProxy');
+  if(!p) return;
+  if(selIsMulti()){
+    p.value = selectionToTSV();
+    p.focus({preventScroll:true});
+    p.select();
+  } else if(document.activeElement===p){
+    p.blur();
+  }
+}
+
+function focusCell(r,c){
+  r = Math.max(0, Math.min(state.rows.length-1, r));
+  c = Math.max(0, Math.min(maxCol(), c));
+  const el = cellEl(r,c);
+  if(!el) return;
+  sel = {ar:r, ac:c, fr:r, fc:c};
+  refreshSelectionUI();
+  el.focus({preventScroll:true});
+  try{ el.select(); }catch(e){}
+  el.scrollIntoView({block:'nearest', inline:'nearest'});
+}
+
+function selectAllCells(){
+  if(!state.rows.length) return;
+  setSel(0,0,state.rows.length-1,maxCol());
+  syncProxy();
+}
+function copySelectionBtn(){
+  if(!selIsMulti()){ selectAllCells(); }
+  const q = selRect();
+  if(!q){ toast('Nothing to copy yet'); return; }
+  const tsv = selectionToTSV();
+  const done = ()=>toast('Copied '+(q.r2-q.r1+1)+' row(s) × '+(q.c2-q.c1+1)+' column(s)');
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(tsv).then(done, ()=>{ syncProxy(); document.execCommand('copy'); done(); });
+  } else {
+    syncProxy();
+    try{ document.execCommand('copy'); done(); }catch(e){ toast('Copy is not available in this browser'); }
+  }
+}
+
+/* ---- writing values ---- */
+function cleanNumText(s){
+  s = String(s==null ? '' : s).trim();
+  if(s==='') return '';
+  const t = s.replace(/,/g,'').replace(/\s+/g,'');
+  return /^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i.test(t) ? t.replace(/^\+/,'') : null;   // null = not a number
+}
+// returns 1 if written, 0 if skipped
+function writeCell(row,c,raw){
+  const t = cleanNumText(raw);
+  if(c===0){ if(t===null||t==='') return 0; row.ch = parseFloat(t); return 1; }
+  if(c===1){
+    if(t===null) return 0;
+    if(t===''){ row.width = state.defaultWidth; return 1; }
+    const n = parseFloat(t); if(!(n>0)) return 0;
+    row.width = n; return 1;
+  }
+  if(t===null) return 0;
+  const p = row.points[(c-2)>>1];
+  if(!p) return 0;
+  if((c-2)%2===0) p.initRL = t; else p.finalRL = t;
+  return 1;
+}
+function parseClipboardGrid(text){
+  const lines = String(text).replace(/\r\n?/g,'\n').split('\n');
+  while(lines.length>1 && lines[lines.length-1]==='') lines.pop();
+  return lines.map(l=>l.split('\t'));
+}
+
+function afterGridEdit(touchedChainage, keepRect){
+  const before = state.rows.map(r=>r.id).join(',');
+  if(touchedChainage) sortRows();
+  const orderChanged = state.rows.map(r=>r.id).join(',')!==before;
+  renderTable(); recompute();
+  if(orderChanged || !keepRect){ sel = null; refreshSelectionUI(); }
+  else { sel = keepRect; refreshSelectionUI(); syncProxy(); }
+}
+
+function applyPaste(text, anchorR, anchorC){
+  let grid = parseClipboardGrid(text);
+  if(!grid.length) return;
+  const q = selRect();
+  const multiSel = selIsMulti();
+  const single = grid.length===1 && grid[0].length===1;
+  const maxC = maxCol();
+  pushUndo();
+  let written = 0, skipped = 0, added = 0, touchedCh = false, keep = null;
+
+  if(single && multiSel){
+    // one value pasted onto a selected block: fill every selected cell
+    for(let r=q.r1; r<=q.r2; r++) for(let c=q.c1; c<=q.c2; c++){
+      if(writeCell(state.rows[r], c, grid[0][0])) { written++; if(c===0) touchedCh = true; } else skipped++;
+    }
+    keep = {ar:sel.ar, ac:sel.ac, fr:sel.fr, fc:sel.fc};
+  } else {
+    // header row copied from Excel (no numbers in it) is ignored
+    if(grid.length>1 && !grid[0].some(v=>cleanNumText(v)!==null && cleanNumText(v)!=='')) grid.shift();
+    let r0 = anchorR, c0 = anchorC;
+    if(multiSel){ r0 = q.r1; c0 = q.c1; }
+    if(r0==null){ r0 = 0; c0 = 0; }
+    let widest = 0;
+    grid.forEach((line,i)=>{
+      const r = r0+i;
+      while(r>=state.rows.length){
+        const lastCh = state.rows.length ? Math.max(...state.rows.map(x=>x.ch)) : -50;
+        state.rows.push(newRow(lastCh+50, state.defaultWidth));
+        added++;
+      }
+      widest = Math.max(widest, line.length);
+      line.forEach((v,j)=>{
+        const c = c0+j;
+        if(c>maxC) { skipped++; return; }
+        if(writeCell(state.rows[r], c, v)){ written++; if(c===0) touchedCh = true; } else skipped++;
+      });
+    });
+    keep = {ar:r0, ac:c0, fr:r0+grid.length-1, fc:Math.min(maxC, c0+widest-1)};
+  }
+  afterGridEdit(touchedCh, keep);
+  toast('Pasted '+written+' value(s)'+(added?(' · '+added+' new row(s)'):'')+(skipped?(' · '+skipped+' skipped (not numeric / outside columns)'):''));
+}
+
+function clearSelectedCells(){
+  const q = selRect();
+  if(!q) return;
+  pushUndo();
+  let n = 0;
+  for(let r=q.r1; r<=q.r2; r++){
+    const row = state.rows[r]; if(!row) continue;
+    for(let c=q.c1; c<=q.c2; c++){
+      if(c===0) continue;                                   // chainages are never blanked
+      if(c===1) row.width = state.defaultWidth;
+      else { const p = row.points[(c-2)>>1]; if(c%2===0) p.initRL = ''; else p.finalRL = ''; }
+      n++;
+    }
+  }
+  const keep = {ar:sel.ar, ac:sel.ac, fr:sel.fr, fc:sel.fc};
+  afterGridEdit(false, keep);
+  toast(n ? ('Cleared '+n+' cell(s)'+(q.c1===0?' (chainage column left unchanged)':'')) : 'Chainage cells cannot be cleared — edit them directly');
+}
+
+(function initGrid(){
+  const table = document.getElementById('dataTable');
+  const proxy = document.getElementById('gridProxy');
+  const rowOfTd = td => +td.dataset.r;
+  const cellOf = el => {
+    const inp = el.closest && el.closest('input[data-r]');
+    if(inp) return {r:+inp.dataset.r, c:+inp.dataset.c};
+    const td = el.closest && el.closest('td');
+    const i = td && td.querySelector('input[data-r]');
+    return i ? {r:+i.dataset.r, c:+i.dataset.c} : null;
+  };
+
+  table.addEventListener('mousedown', e=>{
+    if(e.button!==0) return;
+    const rn = e.target.closest('td.rownum');
+    if(rn){
+      e.preventDefault();
+      const r = rowOfTd(rn);
+      if(e.shiftKey && sel) setSel(sel.ar,0,r,maxCol()); else setSel(r,0,r,maxCol());
+      selDrag = 'row'; dragOrigin = {x:e.clientX, y:e.clientY, moved:false};
+      blurActive();
+      return;
+    }
+    const cell = cellOf(e.target);
+    if(!cell) return;
+    if(e.shiftKey && sel){
+      e.preventDefault();
+      setSel(sel.ar, sel.ac, cell.r, cell.c);
+      blurActive(); syncProxy();
+      return;
+    }
+    sel = {ar:cell.r, ac:cell.c, fr:cell.r, fc:cell.c};
+    selDrag = 'cell'; dragOrigin = {x:e.clientX, y:e.clientY, moved:false};
+    refreshSelectionUI();
+  });
+
+  let dragOrigin = null;
+  document.addEventListener('mousemove', e=>{
+    if(dragOrigin && !dragOrigin.moved && Math.hypot(e.clientX-dragOrigin.x, e.clientY-dragOrigin.y) > 4) dragOrigin.moved = true;
+  });
+  table.addEventListener('mouseover', e=>{
+    if(!selDrag || !sel) return;
+    if(dragOrigin && !dragOrigin.moved) return;      // page scrolled under a still pointer: not a drag
+    if(selDrag==='row'){
+      const tr = e.target.closest('tr[data-id]'); if(!tr) return;
+      const rn = tr.querySelector('td.rownum'); if(!rn) return;
+      sel.fr = rowOfTd(rn); sel.fc = maxCol();
+      refreshSelectionUI();
+      return;
+    }
+    const cell = cellOf(e.target);
+    if(!cell || (cell.r===sel.fr && cell.c===sel.fc)) return;
+    if(cell.r===sel.ar && cell.c===sel.ac && !selIsMulti()) return;
+    if(!table.classList.contains('dragging')){
+      table.classList.add('dragging');
+      blurActive();
+      const gs = window.getSelection && window.getSelection(); if(gs) gs.removeAllRanges();
+    }
+    sel.fr = cell.r; sel.fc = cell.c;
+    refreshSelectionUI();
+  });
+  table.addEventListener('selectstart', e=>{ if(selDrag && table.classList.contains('dragging')) e.preventDefault(); });
+
+  document.addEventListener('mouseup', ()=>{
+    if(!selDrag) return;
+    selDrag = null;
+    table.classList.remove('dragging');
+    syncProxy();
+  });
+  document.addEventListener('mousedown', e=>{
+    if(e.target.closest('#dataTable') || e.target.closest('.datatools') || e.target.id==='gridProxy') return;
+    if(sel) clearSel();
+  });
+
+  // header clicks select whole columns; corner selects everything
+  table.addEventListener('click', e=>{
+    const corner = e.target.closest('th.corner');
+    if(corner){ selectAllCells(); return; }
+    const th = e.target.closest('th.colsel');
+    if(!th || !state.rows.length) return;
+    const c0 = +th.dataset.c0, c1 = +th.dataset.c1;
+    setSel(0, c0, state.rows.length-1, c1);
+    blurActive(); syncProxy();
+  });
+  table.addEventListener('focusin', e=>{
+    const inp = e.target.closest && e.target.closest('input[data-r]');
+    if(inp && !selDrag) { sel = {ar:+inp.dataset.r, ac:+inp.dataset.c, fr:+inp.dataset.r, fc:+inp.dataset.c}; refreshSelectionUI(); }
+  });
+
+  // keyboard inside a single cell: Up / Down / Enter move between rows instead of nudging the number
+  table.addEventListener('keydown', e=>{
+    const inp = e.target.closest && e.target.closest('input[data-r]');
+    if(!inp || e.ctrlKey || e.metaKey || e.altKey) return;
+    if(e.key==='ArrowUp' || e.key==='ArrowDown' || e.key==='Enter'){
+      e.preventDefault();
+      const r = +inp.dataset.r, c = +inp.dataset.c;
+      const dr = (e.key==='ArrowUp' || (e.key==='Enter' && e.shiftKey)) ? -1 : 1;
+      if(e.shiftKey && e.key!=='Enter'){
+        const base = sel || {ar:r,ac:c,fr:r,fc:c};
+        const nr = Math.max(0, Math.min(state.rows.length-1, base.fr+dr));
+        sel = {ar:base.ar, ac:base.ac, fr:nr, fc:base.fc};
+        refreshSelectionUI(); blurActive(); syncProxy();
+        return;
+      }
+      focusCell(r+dr, c);
+    }
+  });
+
+  // multi-cell paste started from inside a single cell (Excel block pasted into the grid)
+  table.addEventListener('paste', e=>{
+    const inp = e.target.closest && e.target.closest('input[data-r]');
+    if(!inp) return;
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    if(!/[\t\n]/.test(String(text).replace(/\n$/,''))) return;     // single value: normal paste
+    e.preventDefault();
+    sel = null;
+    applyPaste(text, +inp.dataset.r, +inp.dataset.c);
+  });
+
+  // --- hidden textarea: events while several cells are selected ---
+  proxy.addEventListener('copy', ()=>{
+    const q = selRect();
+    if(q) toast('Copied '+(q.r2-q.r1+1)+' row(s) × '+(q.c2-q.c1+1)+' column(s)');
+  });
+  proxy.addEventListener('cut', ()=>{
+    // the browser puts the selection on the clipboard; we then clear the cells
+    setTimeout(()=>{ clearSelectedCells(); }, 0);
+  });
+  proxy.addEventListener('paste', e=>{
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    if(text==null || text==='') return;
+    applyPaste(text, null, null);
+  });
+  proxy.addEventListener('keydown', e=>{
+    const mod = e.ctrlKey || e.metaKey;
+    const q = selRect();
+    if(e.key==='Escape'){ clearSel(); return; }
+    if(mod && (e.key==='a' || e.key==='A')){ e.preventDefault(); selectAllCells(); return; }
+    if(mod) return;                                                   // let copy / cut / paste / undo through
+    if(e.key==='Delete' || e.key==='Backspace'){ e.preventDefault(); clearSelectedCells(); return; }
+    if(!q) return;
+    const arrows = {ArrowUp:[-1,0], ArrowDown:[1,0], ArrowLeft:[0,-1], ArrowRight:[0,1]};
+    if(arrows[e.key]){
+      e.preventDefault();
+      const [dr,dc] = arrows[e.key];
+      if(e.shiftKey){
+        sel.fr = Math.max(0, Math.min(state.rows.length-1, sel.fr+dr));
+        sel.fc = Math.max(0, Math.min(maxCol(), sel.fc+dc));
+        refreshSelectionUI(); syncProxy();
+      } else {
+        focusCell(sel.fr+dr, sel.fc+dc);
+      }
+      return;
+    }
+    if(e.key==='Enter' || e.key==='Tab'){ e.preventDefault(); focusCell(q.r1 + (e.key==='Enter'?1:0), q.c1 + (e.key==='Tab'?(e.shiftKey?-1:1):0)); return; }
+    if(/^[0-9.\-]$/.test(e.key)){                                     // start typing: edit the anchor cell
+      e.preventDefault();
+      const r = sel.ar, c = sel.ac;
+      focusCell(r,c);
+      const inp = cellEl(r,c);
+      if(inp){ inp.value = e.key; inp.dispatchEvent(new Event('input',{bubbles:true})); }
+    }
+  });
+
+  // Ctrl+Z restores the previous bulk edit (outside text fields), Esc closes the dialog
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Escape' && document.getElementById('importModal').classList.contains('open')){ closeImportModal(); return; }
+    if((e.ctrlKey||e.metaKey) && (e.key==='z'||e.key==='Z') && !e.shiftKey){
+      const a = document.activeElement;
+      const editing = a && (a.tagName==='INPUT' || a.tagName==='TEXTAREA') && a!==proxy;
+      if(!editing && document.getElementById('sheet-data').classList.contains('active') && undoStack.length){ e.preventDefault(); undoLast(); }
+    }
+  });
+
+  // mouse wheel must not change the value of the focused number box
+  document.addEventListener('wheel', e=>{
+    const a = document.activeElement;
+    if(a && a.type==='number' && e.target===a) a.blur();
+  }, {passive:true});
+})();
+
+/* ============================================================
+   EXCEL TEMPLATE DOWNLOAD
+   ============================================================ */
+const TEMPLATE_XLSX_B64 = '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';
+function downloadTemplate(){
+  const bin = atob(TEMPLATE_XLSX_B64);
+  const u8 = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) u8[i] = bin.charCodeAt(i);
+  const blob = new Blob([u8], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Earthwork_Data_Entry_Template.xlsx';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+  toast('Template downloaded — fill one sheet, then use Upload Excel/CSV');
+}
+
+/* ============================================================
+   SPREADSHEET READER (no external library — works offline)
+   .xlsx is a zip of XML files; .csv / .tsv are plain text
+   ============================================================ */
+async function inflateRaw(u8){
+  const stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+function readZipDirectory(buf){
+  const u8 = new Uint8Array(buf), dv = new DataView(buf);
+  let eocd = -1;
+  for(let i=u8.length-22; i>=Math.max(0,u8.length-65557); i--){
+    if(dv.getUint32(i,true)===0x06054b50){ eocd = i; break; }
+  }
+  if(eocd<0) throw new Error('This does not look like an .xlsx file (zip directory not found).');
+  const count = dv.getUint16(eocd+10,true), cdOff = dv.getUint32(eocd+16,true);
+  const entries = {};
+  let p = cdOff;
+  for(let n=0;n<count;n++){
+    if(dv.getUint32(p,true)!==0x02014b50) break;
+    const method = dv.getUint16(p+10,true), csize = dv.getUint32(p+20,true);
+    const nlen = dv.getUint16(p+28,true), elen = dv.getUint16(p+30,true), clen = dv.getUint16(p+32,true);
+    const lho = dv.getUint32(p+42,true);
+    const name = new TextDecoder().decode(u8.subarray(p+46,p+46+nlen));
+    entries[name] = {method:method, csize:csize, lho:lho};
+    p += 46+nlen+elen+clen;
+  }
+  return {u8:u8, dv:dv, entries:entries};
+}
+async function readZipText(zip, name){
+  const e = zip.entries[name];
+  if(!e) return null;
+  const lo = e.lho;
+  const start = lo + 30 + zip.dv.getUint16(lo+26,true) + zip.dv.getUint16(lo+28,true);
+  const raw = zip.u8.subarray(start, start+e.csize);
+  let out;
+  if(e.method===0) out = raw;
+  else if(e.method===8) out = await inflateRaw(raw);
+  else throw new Error('Unsupported compression inside the .xlsx file.');
+  return new TextDecoder('utf-8').decode(out);
+}
+function xmlAttr(el,name){
+  return el.getAttribute(name) || el.getAttribute('r:'+name) ||
+    el.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', name) || '';
+}
+function xlsxColIndex(ref){
+  const m = /^([A-Za-z]+)/.exec(ref||'');
+  if(!m) return 0;
+  let n = 0;
+  for(const ch of m[1].toUpperCase()) n = n*26 + (ch.charCodeAt(0)-64);
+  return n-1;
+}
+async function readXlsx(buf){
+  if(typeof DecompressionStream==='undefined')
+    throw new Error('This browser cannot open .xlsx files directly. In Excel use Save As → CSV and upload the CSV instead.');
+  const zip = readZipDirectory(buf);
+  const parser = new DOMParser();
+  const readXml = async n => { const t = await readZipText(zip,n); return t==null ? null : parser.parseFromString(t,'application/xml'); };
+  const wbDoc = await readXml('xl/workbook.xml');
+  if(!wbDoc) throw new Error('This does not look like an Excel workbook (xl/workbook.xml missing).');
+  const relDoc = await readXml('xl/_rels/workbook.xml.rels');
+  const rels = {};
+  if(relDoc) for(const r of relDoc.getElementsByTagNameNS('*','Relationship')) rels[r.getAttribute('Id')] = r.getAttribute('Target');
+
+  const sst = [];
+  const ssDoc = await readXml('xl/sharedStrings.xml');
+  if(ssDoc) for(const si of ssDoc.getElementsByTagNameNS('*','si')){
+    let s = '';
+    for(const t of si.getElementsByTagNameNS('*','t')){ if(t.parentNode.localName==='rPh') continue; s += t.textContent; }
+    sst.push(s);
+  }
+
+  const sheets = [];
+  for(const sh of wbDoc.getElementsByTagNameNS('*','sheet')){
+    const name = sh.getAttribute('name');
+    let target = rels[xmlAttr(sh,'id')];
+    if(!target) continue;
+    target = target.charAt(0)==='/' ? target.slice(1) : 'xl/'+target.replace(/^\.\//,'');
+    const doc = await readXml(target);
+    if(!doc) continue;
+    const rows = [];
+    let seq = 0;
+    for(const rEl of doc.getElementsByTagNameNS('*','row')){
+      const rIdx = rEl.getAttribute('r') ? (parseInt(rEl.getAttribute('r'),10)-1) : seq;
+      seq = rIdx+1;
+      const arr = [];
+      let cSeq = 0;
+      for(const c of rEl.getElementsByTagNameNS('*','c')){
+        const ci = c.getAttribute('r') ? xlsxColIndex(c.getAttribute('r')) : cSeq;
+        cSeq = ci+1;
+        const t = c.getAttribute('t');
+        const vEl = c.getElementsByTagNameNS('*','v')[0];
+        let val = '';
+        if(t==='inlineStr'){ val = Array.from(c.getElementsByTagNameNS('*','t')).map(x=>x.textContent).join(''); }
+        else if(vEl){
+          const raw = vEl.textContent;
+          if(t==='s') val = sst[parseInt(raw,10)] || '';
+          else if(t==='str') val = raw;
+          else if(t==='b') val = raw==='1' ? 1 : 0;
+          else if(t==='e') val = '';
+          else { const n = parseFloat(raw); val = isNaN(n) ? raw : n; }
+        }
+        if(val!=='') arr[ci] = val;
+      }
+      if(arr.length){ while(rows.length<rIdx) rows.push([]); rows[rIdx] = arr; }
+    }
+    sheets.push({name:name, rows:rows});
+  }
+  return sheets;
+}
+function parseDelimited(text){
+  text = text.replace(/^﻿/,'');
+  const firstLine = text.split(/\r?\n/).find(l=>l.trim()) || '';
+  const cnt = d => (firstLine.match(new RegExp(d==='\t'?'\\t':'\\'+d,'g'))||[]).length;
+  const best = [['\t',cnt('\t')],[',',cnt(',')],[';',cnt(';')]].sort((a,b)=>b[1]-a[1])[0];
+  const delim = best[1]>0 ? best[0] : ',';
+  const rows = []; let row = [], cell = '', q = false;
+  for(let i=0;i<text.length;i++){
+    const ch = text[i];
+    if(q){
+      if(ch==='"'){ if(text[i+1]==='"'){ cell += '"'; i++; } else q = false; }
+      else cell += ch;
+    } else if(ch==='"') q = true;
+    else if(ch===delim){ row.push(cell); cell = ''; }
+    else if(ch==='\n' || ch==='\r'){
+      if(ch==='\r' && text[i+1]==='\n') i++;
+      row.push(cell); cell = ''; rows.push(row); row = [];
+    } else cell += ch;
+  }
+  if(cell!=='' || row.length){ row.push(cell); rows.push(row); }
+  // semicolon files come from decimal-comma Excel settings: 9,5 means 9.5
+  if(delim===';') rows.forEach(r=>{ for(let i=0;i<r.length;i++) if(/^\s*-?\d+,\d+\s*$/.test(r[i])) r[i] = r[i].replace(',','.'); });
+  return rows;
+}
+
+/* ---- turn a sheet into chainage rows ---- */
+function cellText(v){ return v==null ? '' : String(v).trim(); }
+function numOrNull(v){                      // null = blank, NaN = not a number
+  if(typeof v==='number') return isFinite(v) ? v : NaN;
+  const t = cleanNumText(v);
+  if(t==='' ) return null;
+  return t===null ? NaN : parseFloat(t);
+}
+function roundTxt(n){ return String(+n.toFixed(4)); }
+
+function extractFromSheet(sheet){
+  const rows = sheet.rows;
+  let h = -1;
+  for(let i=0;i<Math.min(rows.length,40);i++){
+    if((rows[i]||[]).some(v=>/^\s*chainage/i.test(cellText(v)))){ h = i; break; }
+  }
+  if(h<0) return null;
+  const hr = rows[h] || [], hr2 = rows[h+1] || [];
+  const chCol = hr.findIndex(v=>/chainage/i.test(cellText(v)));
+  const wCol = hr.findIndex(v=>/width/i.test(cellText(v)));
+  const isInit = s => /initial|ground|existing|\bo?gl\b|\birl\b/i.test(s);
+  const isFin  = s => /final|formation|design|proposed|\bfrl\b|\bfgl\b/i.test(s);
+  const scan = r => { const a=[], b=[]; for(let i=0;i<r.length;i++){ const s = cellText(r[i]); if(!s) continue; if(isInit(s)) a.push(i); else if(isFin(s)) b.push(i); } return {a:a,b:b}; };
+  let sc = scan(hr), dataStart = h+1;
+  if(!sc.a.length && !sc.b.length){ sc = scan(hr2); dataStart = h+2; }
+  if(!sc.a.length || !sc.b.length) return {error:'Sheet "'+sheet.name+'": could not find "Initial RL" and "Final RL" columns next to the Chainage column.'};
+  if(sc.a.length!==sc.b.length) return {error:'Sheet "'+sheet.name+'": the Initial RL and Final RL columns do not pair up ('+sc.a.length+' vs '+sc.b.length+').'};
+  const n = sc.a.length;
+  if(n>4) return {error:'Sheet "'+sheet.name+'": found '+n+' Initial/Final RL pairs. The calculator supports 2, 3 or 4 points across the width.'};
+  const mode = n>=4 ? '4pt' : n===3 ? '3pt' : 'simple';
+  const out = {sheet:sheet.name, mode:mode, rows:[], notNumber:[], badLevels:0, incomplete:0, dupes:0, singlePair:n===1};
+  const byCh = new Map();
+  for(let i=dataStart;i<rows.length;i++){
+    const row = rows[i] || [];
+    if(!row.some(v=>cellText(v)!=='')) continue;
+    const chv = numOrNull(row[chCol]);
+    if(chv===null || Number.isNaN(chv)){ if(out.notNumber.length<5) out.notNumber.push(cellText(row[chCol]) || '(blank)'); out.skippedRows = (out.skippedRows||0)+1; continue; }
+    let width = null;
+    if(wCol>=0){ const w = numOrNull(row[wCol]); if(w!==null && !Number.isNaN(w) && w>0) width = +w.toFixed(4); }
+    let blank = false;
+    const read = idx => { const v = numOrNull(row[idx]); if(v===null){ blank = true; return ''; } if(Number.isNaN(v)){ out.badLevels++; blank = true; return ''; } return roundTxt(v); };
+    const pts = [];
+    for(let k=0;k<n;k++) pts.push({initRL:read(sc.a[k]), finalRL:read(sc.b[k])});
+    const points = n===1 ? [pts[0], {initRL:pts[0].initRL, finalRL:pts[0].finalRL}] : pts;
+    if(blank) out.incomplete++;
+    const rec = {ch:+chv.toFixed(4), width:width, points:points};
+    if(byCh.has(rec.ch)) out.dupes++;
+    byCh.set(rec.ch, rec);
+  }
+  out.rows = Array.from(byCh.values()).sort((x,y)=>x.ch-y.ch);
+  out.skippedRows = out.skippedRows || 0;
+  return out;
+}
+function pickImportCandidate(sheets){
+  const found = [], errors = [];
+  sheets.forEach(s=>{
+    if(sheets.length>1 && /instruction|readme|help|notes?$/i.test(s.name)) return;
+    const r = extractFromSheet(s);
+    if(!r) return;
+    if(r.error){ errors.push(r.error); return; }
+    if(r.rows.length) found.push(r);
+  });
+  if(!found.length){
+    throw new Error(errors[0] || 'No chainage data found. The sheet needs a header row with "Chainage" and "Initial RL" / "Final RL" columns, followed by numeric rows. Use the Excel Template button for the correct layout.');
+  }
+  found.sort((a,b)=>b.rows.length-a.rows.length);
+  return found.find(r=>r.mode===state.mode) || found[0];
+}
+
+/* ---- upload dialog ---- */
+const MODE_LABEL = {simple:'Simple (2-Point)', '3pt':'3-Point', '4pt':'4-Point'};
+let pendingImport = null;
+function openImportModal(title, bodyHtml, buttons){
+  document.getElementById('impTitle').textContent = title;
+  document.getElementById('impBody').innerHTML = bodyHtml;
+  const bar = document.getElementById('impBtns');
+  bar.innerHTML = '';
+  buttons.forEach(b=>{
+    const el = document.createElement('button');
+    el.className = 'btn ' + (b.cls||'alt');
+    el.textContent = b.label;
+    el.onclick = b.onClick;
+    bar.appendChild(el);
+  });
+  document.getElementById('importModal').classList.add('open');
+}
+function closeImportModal(){
+  document.getElementById('importModal').classList.remove('open');
+  pendingImport = null;
+}
+async function handleSpreadsheetUpload(evt){
+  const file = evt.target.files && evt.target.files[0];
+  evt.target.value = '';
+  if(!file) return;
+  try{
+    const ext = (file.name.split('.').pop()||'').toLowerCase();
+    let sheets;
+    if(ext==='xlsx' || ext==='xlsm' || ext==='xltx') sheets = await readXlsx(await file.arrayBuffer());
+    else if(ext==='csv' || ext==='tsv' || ext==='txt') sheets = [{name:file.name, rows:parseDelimited(await file.text())}];
+    else if(ext==='xls') throw new Error('Old .xls files cannot be read. In Excel choose Save As → Excel Workbook (.xlsx) or CSV, then upload again.');
+    else throw new Error('Please choose an Excel (.xlsx) or CSV file.');
+    const res = pickImportCandidate(sheets);
+    showImportDialog(file.name, res);
+  }catch(err){
+    openImportModal('Could not import this file', '<div class="warn">'+esc(err.message)+'</div>', [{label:'Close', cls:'blue', onClick:closeImportModal}]);
+  }
+}
+function showImportDialog(fileName, res){
+  pendingImport = res;
+  const hasRows = state.rows.length>0;
+  const sameMode = res.mode===state.mode;
+  const chs = res.rows.map(r=>r.ch);
+  let html = '<div class="kv"><b>File</b><span>'+esc(fileName)+'</span><b>Sheet</b><span>'+esc(res.sheet)+'</span><b>Layout</b><span>'+MODE_LABEL[res.mode]+'</span>'
+           + '<b>Chainages</b><span>'+res.rows.length+' ('+Math.min(...chs)+' – '+Math.max(...chs)+' m)</span></div>';
+  if(res.singlePair) html += '<div class="info">Only one Initial/Final RL pair was found — it is applied to both road edges (Simple layout).</div>';
+  const warns = [];
+  if(res.skippedRows) warns.push(res.skippedRows+' row(s) skipped because the chainage is not a number (e.g. '+res.notNumber.map(esc).join(', ')+').');
+  if(res.badLevels) warns.push(res.badLevels+' level cell(s) contain text instead of a number and were left blank.');
+  if(res.incomplete) warns.push(res.incomplete+' chainage(s) have blank levels — a blank level is calculated as 0.000.');
+  if(res.dupes) warns.push(res.dupes+' repeated chainage(s) in the file — the last one was used.');
+  if(warns.length) html += '<div class="warn">'+warns.map(w=>'• '+w).join('<br>')+'</div>';
+  const buttons = [];
+  if(!hasRows){
+    html += '<div class="info">The form is empty, so these chainages will be loaded'+(sameMode?'':' and the layout switched to '+MODE_LABEL[res.mode])+'.</div>';
+    buttons.push({label:'Cancel', onClick:closeImportModal}, {label:'Import '+res.rows.length+' chainages', cls:'blue', onClick:()=>confirmImport('replace')});
+  } else if(!sameMode){
+    html += '<div class="warn">The file uses the <b>'+MODE_LABEL[res.mode]+'</b> layout but the form is set to <b>'+MODE_LABEL[state.mode]+'</b>. Importing switches the form to '+MODE_LABEL[res.mode]+' and replaces the '+state.rows.length+' chainages now in the table (Undo is available).</div>';
+    buttons.push({label:'Cancel', onClick:closeImportModal}, {label:'Switch & replace', cls:'blue', onClick:()=>confirmImport('replace')});
+  } else {
+    const have = new Set(state.rows.map(r=>roundTxt(r.ch)));
+    const upd = res.rows.filter(r=>have.has(roundTxt(r.ch))).length, add = res.rows.length-upd;
+    html += '<div class="info"><b>Add / update</b> keeps your current table: '+upd+' matching chainage(s) get the file\'s levels, '+add+' new chainage(s) are added.<br><b>Replace all</b> clears the table first. Undo is available.</div>';
+    buttons.push({label:'Cancel', onClick:closeImportModal}, {label:'Replace all', cls:'danger', onClick:()=>confirmImport('replace')}, {label:'Add / update', cls:'blue', onClick:()=>confirmImport('merge')});
+  }
+  openImportModal('Import from spreadsheet', html, buttons);
+}
+function confirmImport(kind){
+  const res = pendingImport;
+  if(!res) return;
+  closeImportModal();
+  pushUndo();
+  const modeChanged = res.mode!==state.mode;
+  if(modeChanged){
+    state.mode = res.mode;
+    document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.mode===state.mode));
+  }
+  const mk = r => ({id:uid++, ch:r.ch, width:(r.width!=null ? r.width : state.defaultWidth), points:r.points.map(p=>({initRL:p.initRL, finalRL:p.finalRL}))});
+  let added = 0, updated = 0;
+  if(kind==='replace' || modeChanged || !state.rows.length){
+    state.rows = res.rows.map(mk);
+    added = state.rows.length;
+  } else {
+    res.rows.forEach(r=>{
+      const hit = state.rows.find(x=>Math.abs(x.ch-r.ch)<1e-6);
+      if(hit){
+        if(r.width!=null) hit.width = r.width;
+        r.points.forEach((p,i)=>{
+          if(p.initRL!=='') hit.points[i].initRL = p.initRL;
+          if(p.finalRL!=='') hit.points[i].finalRL = p.finalRL;
+        });
+        updated++;
+      } else { state.rows.push(mk(r)); added++; }
+    });
+  }
+  sortRows();
+  sel = null;
+  renderTable(); recompute();
+  toast('Imported: '+added+' added'+(updated?(', '+updated+' updated'):'')+' · '+state.rows.length+' chainages in table');
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+tryRestoreAutosave();
+toggleBatterInputs();
+renderTable();
+recompute();
+</script>
+</body>
+</html>
